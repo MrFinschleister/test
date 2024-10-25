@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        body {
+            margin: 0px;
+            padding: none;
+            background-color: rgb(47, 43, 43);
+            font-family:Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif
+        }
+
+        button {
+            position: absolute;
+            width: 15vw;
+            height: 15vh;
+            background-color: rgb(36, 34, 34);
+            border-radius: 1vw;
+            border: none;
+        }
+
+        button:hover {
+            border: 3px rgb(207, 207, 207) solid;
+        }
+
+        div {
+            position: absolute;
+            background-color: rgb(36, 34, 34);
+            border-radius: 1vw;
+        }
+    </style>
+</head>
+<body onload="loadData()">
+    <div style="width: 85vw; height: 40vh; top: 10vh; left: 5vw; font-size: 50px; padding-top: 5vh; padding-bottom: 5vh; padding-left: 2.5vw; padding-right: 2.5vw;" id="letterOutput"></div>
+
+    <div style="width: 18vw; height: 20vh; top: 70vh; left: 5vw; color: rgb(207, 207, 207); padding-left: 1vw; padding-right: 1vw;">
+        <p id="timeOutput" style="line-height: 10px;">Time: </p>
+        <p id="accuracyOutput">Accuracy: </p>
+        <p id="rawWpmOutput">Raw: </p>
+        <p id="adjustedWpmOutput">Adjusted: </p>
+    </div>
+
+    <button style="top: 72.5vh; left: 32.5vw; display: inline;" tabindex="1" onclick="start()" id="reloadButton">
+        <img src="media/reload.png" alt="Reload Image" style="width: 9vh; height: 9vh;">
+    </button>
+
+    <button style="top: 72.5vh; left: 52.5vw; display: inline;" tabindex="2" onclick="listInfo()" id="listInfoButton">
+        <img src="media/list.png" alt="List Image" style="width: 9vh; height: 9vh;">
+    </button>
+    
+    <div style="width: 31vw; height: 58vh; top: 5vh; left: 32.5vw; display: none; padding-top: 2vh; padding-bottom: 2vh; padding-left: 2vw; padding-right: 2vw; border: 3px rgb(47, 43, 43) solid; overflow-y: scroll;" id="listInfoDiv"></div>
+    <script>
+        let words = ["the", "of", "to", "and", "a", "in", "is", "it", "you", "that", "he", "was", "for", "on", "are", "with", "as", "I", "his", "they", "be", "at", "one", "have", "this", "from", "or", "had", "by", "not", "word", "but", "what", "some", "we", "can", "out", "other", "were", "all", "there", "when", "up", "use", "your", "how", "said", "an", "each", "she", "which", "do", "their", "time", "if", "will", "way", "about", "many", "then", "them", "write", "would", "like", "so", "these", "her", "long", "make", "thing", "see", "him", "two", "has", "look", "more", "day", "could", "go", "come", "did", "number", "sound", "no", "most", "people", "my", "over", "know", "water", "than", "call", "first", "who", "may", "down", "side", "been", "now", "find", "any", "new", "work", "part", "take", "get", "place", "made", "live", "where", "after", "back", "little", "only", "round", "man", "year", "came", "show", "every", "good", "me", "give", "our", "under", "name", "very", "through", "just", "form", "sentence", "great", "think", "say", "help", "low", "line", "differ", "turn", "cause", "much", "mean", "before", "move", "right", "boy", "old", "too", "same", "tell", "does", "set", "three", "want", "air", "well", "also", "play", "small", "end", "put", "home", "read", "hand", "port", "large", "spell", "add", "even", "land", "here", "must", "big", "high", "such", "follow", "act", "why", "ask", "men", "change", "went", "light", "kind", "off", "need", "house", "picture", "try", "us", "again", "animal", "point", "mother", "world", "near", "build", "self", "earth", "father", "head", "stand", "own", "page", "should", "country", "found", "answer", "school", "grow", "study", "still", "learn", "plant", "cover", "food", "sun", "four", "between", "state", "keep", "eye", "never", "last", "let", "thought", "city", "tree", "cross", "farm", "hard", "start", "might", "story", "saw", "far", "sea", "draw", "left", "late", "run", "don't", "while", "press", "close", "night", "real", "life", "few", "north", "open", "seem", "together", "next", "white", "children", "begin", "got", "walk", "example", "ease", "paper", "group", "always", "music", "those", "both", "mark", "often", "letter", "until", "mile", "river", "car", "feet", "care", "second", "book", "carry", "took", "science", "eat", "room", "friend", "began", "idea", "fish", "mountain", "stop", "once", "base", "hear", "horse", "cut", "sure", "watch", "color", "face", "wood", "main", "enough", "plain", "girl", "usual", "young", "ready", "above", "ever", "red", "list", "though", "feel", "talk", "bird", "soon", "body", "dog", "family", "direct", "pose", "leave", "song", "measure", "door", "product", "black", "short", "numeral", "class", "wind", "question", "happen", "complete", "ship", "area", "half", "rock", "order", "fire", "south", "problem", "piece", "told", "knew", "pass", "since", "top", "whole", "king", "space", "heard", "best", "hour", "better", "true", "during", "hundred", "five", "remember", "step", "early", "hold", "west", "ground", "interest", "reach", "fast", "verb", "sing", "listen", "six", "table", "travel", "less", "morning", "ten", "simple", "several", "vowel", "toward", "war", "lay", "against", "pattern", "slow", "center", "love", "person", "money", "serve", "appear", "road", "map", "rain", "rule", "govern", "pull", "cold", "notice", "voice", "unit", "power", "town", "fine", "certain", "fly", "fall", "lead", "cry", "dark", "machine", "note", "wait", "plan", "figure", "star", "box", "noun", "field", "rest", "correct", "able", "pound", "done", "beauty", "drive", "stood", "contain", "front", "teach", "week", "final", "gave", "green", "oh", "quick", "develop", "ocean", "warm", "free", "minute", "strong", "special", "mind", "behind", "clear", "tail", "produce", "fact", "street", "inch", "multiply", "nothing", "course", "stay", "wheel", "full", "force", "blue", "object", "decide", "surface", "deep", "moon", "island", "foot", "system", "busy", "test", "record", "boat", "common", "gold", "possible", "plane", "stead", "dry", "wonder", "laugh", "thousand", "ago", "ran", "check", "game", "shape", "equate", "hot", "miss", "brought", "heat", "snow", "tire", "bring", "yes", "distant", "fill", "east", "paint", "language", "among", "grand", "ball", "yet", "wave", "drop", "heart", "am", "present", "heavy", "dance", "engine", "position", "arm", "wide", "sail", "material", "size", "vary", "settle", "speak", "weight", "general", "ice", "matter", "circle", "pair", "include", "divide", "syllable", "felt", "perhaps", "pick", "sudden", "count", "square", "reason", "length", "represent", "art", "subject", "region", "energy", "hunt", "probable", "bed", "brother", "egg", "ride", "cell", "believe", "fraction", "forest", "sit", "race", "window", "store", "summer", "train", "sleep", "prove", "lone", "leg", "exercise", "wall", "catch", "mount", "wish", "sky", "board", "joy", "winter", "sat", "written", "wild", "instrument", "kept", "glass", "grass", "cow", "job", "edge", "sign", "visit", "past", "soft", "fun", "bright", "gas", "weather", "month", "million", "bear", "finish", "happy", "hope", "flower", "clothe", "strange", "gone", "jump", "baby", "eight", "village", "meet", "root", "buy", "raise", "solve", "metal", "whether", "push", "seven", "paragraph", "third", "shall", "held", "hair", "describe", "cook", "floor", "either", "result", "burn", "hill", "safe", "cat", "century", "consider", "type", "law", "bit", "coast", "copy", "phrase", "silent", "tall", "sand", "soil", "roll", "temperature", "finger", "industry", "value", "fight", "lie", "beat", "excite", "natural", "view", "sense", "ear", "else", "quite", "broke", "case", "middle", "kill", "son", "lake", "moment", "scale", "loud", "spring", "observe", "child", "straight", "consonant", "nation", "dictionary", "milk", "speed", "method", "organ", "pay", "age", "section", "dress", "cloud", "surprise", "quiet", "stone", "tiny", "climb", "cool", "design", "poor", "lot", "experiment", "bottom", "key", "iron", "single", "stick", "flat", "twenty", "skin", "smile", "crease", "hole", "trade", "melody", "trip", "office", "receive", "row", "mouth", "exact", "symbol", "die", "least", "trouble", "shout", "except", "wrote", "seed", "tone", "join", "suggest", "clean", "break", "lady", "yard", "rise", "bad", "blow", "oil", "blood", "touch", "grew", "cent", "mix", "team", "wire", "cost", "lost", "brown", "wear", "garden", "equal", "sent", "choose", "fell", "fit", "flow", "fair", "bank", "collect", "save", "control", "decimal", "gentle", "woman", "captain", "practice", "separate", "difficult", "doctor", "please", "protect", "noon", "whose", "locate", "ring", "character", "insect", "caught", "period", "indicate", "radio", "spoke", "atom", "human", "history", "effect", "electric", "expect", "crop", "modern", "element", "hit", "student", "corner", "party", "supply", "bone", "rail", "imagine", "provide", "agree", "thus", "capital", "won't", "chair", "danger", "fruit", "rich", "thick", "soldier", "process", "operate", "guess", "necessary", "sharp", "wing", "create", "neighbor", "wash", "bat", "rather", "crowd", "corn", "compare", "poem", "string", "bell", "depend", "meat", "rub", "tube", "famous", "dollar", "stream", "fear", "sight", "thin", "triangle", "planet", "hurry", "chief", "colony", "clock", "mine", "tie", "enter", "major", "fresh", "search", "send", "yellow", "gun", "allow", "print", "dead", "spot", "desert", "suit", "current", "lift", "rose", "continue", "block", "chart", "hat", "sell", "success", "company", "subtract", "event", "particular", "deal", "swim", "term", "opposite", "wife", "shoe", "shoulder", "spread", "arrange", "camp", "invent", "cotton", "born", "determine", "quart", "nine", "truck", "noise", "level", "chance", "gather", "shop", "stretch", "throw", "shine", "property", "column", "molecule", "select", "wrong", "gray", "repeat", "require", "broad", "prepare", "salt", "nose", "plural", "anger", "claim", "continent", "oxygen", "sugar", "death", "pretty", "skill", "women", "season", "solution", "magnet", "silver", "thank", "branch", "match", "suffix", "especially", "fig", "afraid", "huge", "sister", "steel", "discuss", "forward", "similar", "guide", "experience", "score", "apple", "bought", "led", "pitch", "coat", "mass", "card", "band", "rope", "slip", "win", "dream", "evening", "condition", "feed", "tool", "total", "basic", "smell", "valley", "nor", "double", "seat", "arrive", "master", "track", "parent", "shore", "division", "sheet", "substance", "favor", "connect", "post", "spend", "chord", "fat", "glad", "original", "share", "station", "dad", "bread", "charge", "proper", "bar", "offer", "segment", "slave", "duck", "instant", "market", "degree", "populate", "chick", "dear", "enemy", "reply", "drink", "occur", "support", "speech", "nature", "range", "steam", "motion", "path", "liquid", "log", "meant", "quotient", "teeth", "shell", "neck",]
+
+        let targetString = []
+        let numWords = 10
+        let currentString = ""
+        let timeInterval 
+        let time = 0
+        let started = false
+        let testData = []
+        let listOpen = false
+
+        function printString() {     
+            let content = currentString.split(" ")
+            for (var x = 0; x < targetString.length; x++) {
+                if (!content[x]) {
+                    content[x] = ""
+                }
+            }
+            let outputDiv = document.getElementById('letterOutput')
+            outputDiv.innerHTML = ""
+            for (var x = 0; x < targetString.length; x++) {
+                for (var y = 0; y < targetString[x].length; y++) {
+                    let el = document.createElement('p')
+                    el.textContent = targetString[x][y]
+                    el.style.display = "inline"
+
+                    if (content[x][y] == targetString[x][y]) {
+                        el.style.color = "rgb(207, 207, 207)"
+                    } else if (!content[x][y]) {
+                        el.style.color = "gray"
+                    } else if (content[x][y] != targetString[x][y]) {
+                        el.style.color = "red"
+                    }
+
+                    outputDiv.appendChild(el)
+                }
+                let space = document.createElement('p')
+                space.textContent = " "
+                space.style.display = "inline"
+                space.style.padding = "none"
+                outputDiv.appendChild(space)
+            }
+
+            if (targetString[targetString.length - 1] == content[targetString.length - 1]) {
+                check()
+            }
+        }
+
+        function check() {
+            let content = currentString.split(" ")
+            let similarity = 0
+            let difference = 0
+            let differences = {}
+
+            for (var x = 0; x < targetString.length; x++) {
+                for (var y = 0; y < targetString[x].length; y++) {
+                    let char1 = content[x][y]
+                    let char2 = targetString[x][y]
+                    if (char1 == char2) {
+                        similarity += 1
+                    } else if (char1 != char2) {
+                        difference += 1
+                        differences[x] = {y:[char1, char2]}
+                    }
+                }
+            }
+
+            if (content.length >= targetString.length) {
+                clearInterval(timeInterval)
+                let calcTime = (time / 1000).toFixed(2)
+                let calcAccuracy = (similarity / targetString.join("").length).toFixed(2)
+                let calcWpmRaw = ((targetString.join(" ").length / 5) / (time / 1000) * 60).toFixed(2)
+                let calcWpmAdjusted = (((targetString.join(" ").length - difference) / 5) / (time / 1000) * 60).toFixed(2)
+
+                document.getElementById('timeOutput').innerHTML = "Time: " + calcTime + " seconds"
+                document.getElementById('accuracyOutput').innerHTML = "Accuracy: " + calcAccuracy + "%"
+                document.getElementById('rawWpmOutput').innerHTML = "Raw: " + calcWpmRaw + " wpm"
+                document.getElementById('adjustedWpmOutput').innerHTML = "Adjusted: " + calcWpmAdjusted + " wpm"
+                
+                let date = new Date()
+
+                testData.push(
+                    {
+                        "t": calcTime,
+                        "acc": calcAccuracy,
+                        "raw": calcWpmRaw,
+                        "wpm": calcWpmAdjusted,
+                        "date": date.getMonth() + "/" + date.getDate() + "/" + Number(date.getFullYear().toString().substring(2)) + " - " + date.getHours() + ":" + date.getMinutes(),
+                    }
+                )
+
+                localStorage.setItem('typingTestData', JSON.stringify(testData))
+            }
+        }
+
+        function start() {
+            //localStorage.removeItem('typingTestData')
+            started = false
+            let element = document.getElementById('reloadButton').cloneNode(true)
+            document.getElementById('reloadButton').remove()
+            document.body.appendChild(element)
+            clearInterval(timeInterval)
+            targetString = []
+            currentString = ""
+            for (var x = 0; x < numWords; x++) {
+                let random = Math.floor(Math.random()*words.length)
+                while (true) {
+                    if (targetString[x-1] == words[random]) {
+                        random = Math.floor(Math.random()*words.length)
+                    } else {
+                        break
+                    }
+                }
+                targetString.push(words[random])
+            }
+            printString()
+            document.body.addEventListener('keydown', keydown)
+        }
+
+        function listInfo() {
+            if (!listOpen) {
+                listOpen = !listOpen
+                document.getElementById('listInfoDiv').style.display = "inline"
+                for (var x = 0; x < testData.length; x++) {
+                    let keys = Object.keys(testData[x])
+                    let div = document.createElement('div')
+                    div.style.position = "relative"
+                    div.style.color = "rgb(207, 207, 207)"
+                    div.style.backgroundColor = "rgb(47, 43, 43)"
+                    div.style.margin = "1vh"
+                    div.style.borderRadius = "0.5vh"
+                    div.style.padding = "1vh"
+                    div.style.fontSize = "10px"
+                    for (var y = 0; y < keys.length; y++) {
+                        let para = document.createElement('para')
+                        para.innerHTML = keys[y] + ": " + testData[x][keys[y]] + " | "
+                        para.style.display = "inline"
+                        div.appendChild(para)
+                    }
+                    document.getElementById('listInfoDiv').appendChild(div)
+                }
+            } else {
+                listOpen = !listOpen
+                document.getElementById('listInfoDiv').style.display = "none"
+            }
+        }
+
+        function keydown(e) {
+            let allowedKeys = "AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz!1@2#3$4%5^6&7*8(9)0_-+={[}]|\\:;\"\'<,>.?/~` "
+
+            if (allowedKeys.includes(e.key)) {
+                currentString += e.key
+                printString()
+
+                if (!started) {
+                    started = true
+                    time = 0
+                    timeInterval = setInterval(function(){time += 25}, 25)
+                }
+            } else if (e.key == "Backspace") {
+                currentString = currentString.slice(0, currentString.length - 1)
+                printString()
+            } else if (e.key == "Enter") {
+                check()
+            }
+        }
+
+        function loadData() {
+            let data = JSON.parse(localStorage.getItem('typingTestData'))
+            if (data) {
+                for (var x = 0; x < data.length; x++) {
+                    testData.push(data[x])
+                }
+            }
+        }
+
+        start()
+    </script>
+</body>
+</html>
