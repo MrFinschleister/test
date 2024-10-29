@@ -1,0 +1,27 @@
+.bg1 {
+    background-color: rgb(55, 100, 140);
+}
+
+.bg2 {
+    background-color: rgb(35, 70, 100);
+}
+
+.color1 {
+    color: rgb(150, 0, 135);
+}
+
+.color2 {
+    color: rgb(110, 70, 120);
+}
+
+.border1 {
+    border: 3px rgb(35, 70, 100) solid;
+}
+
+.border2 {
+    border: 3px rgb(55, 100, 140) solid;
+}
+
+button:hover {
+    border: 3px rgb(150, 0, 135) solid;
+}

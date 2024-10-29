@@ -1,0 +1,27 @@
+.bg1 {
+    background-color: rgb(208, 212, 212);
+}
+
+.bg2 {
+    background-color: rgb(219, 221, 221);
+}
+
+.color1 {
+    color: rgb(48, 48, 48);
+}
+
+.color2 {
+    color: rgb(127, 127, 127);
+}
+
+.border1 {
+    border: 3px rgb(208, 212, 212) solid;
+}
+
+.border2 {
+    border: 3px rgb(219, 221, 221) solid;
+}
+
+button:hover {
+    border: 3px rgb(48, 48, 48) solid;
+}
