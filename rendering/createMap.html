@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <p id="output"></p>
+    <script>
+        let objects = []
+        let cubeWidth = 100
+
+        /* framework:
+            {
+                type: ,
+                width: ,
+                height: ,
+                depth: ,
+                x: ,
+                y: ,
+                z: ,
+                rotate: ,
+                rotationX: ,
+            }
+        */
+        function start() {
+            for (var x1 = cubeWidth / 2; x1 < 500 + cubeWidth / 2; x1 += cubeWidth) {
+                for (var y1 = cubeWidth / 2; y1 < 500 + cubeWidth / 2; y1 += cubeWidth) {
+                    for (var z1 = cubeWidth / 2; z1 < 500 + cubeWidth / 2; z1 += cubeWidth) {
+                        objects.push(
+                            {
+                                type: "rectPrism",
+                                width: cubeWidth,
+                                height: cubeWidth,
+                                depth: cubeWidth,
+                                x: x1,
+                                y: y1,
+                                z: z1,
+                                rotate: false,
+                                rotateX: 0,
+                                 
+                            }
+                        )
+                    }
+                }
+            }
+            document.getElementById('output').innerHTML = JSON.stringify(objects)
+        }
+
+        start()
+    </script>
+</body>
+</html>

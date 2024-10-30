@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <canvas id="canvas" width="500" height="500" style="border: 1px black solid;"></canvas>
+    <input type="text" id="equationInput" onchange="changeVal(this.value)">
+    <button onclick="sort()">Render</button>
+    <script>
+        let canvas = document.getElementById('canvas')
+        let ctx = canvas.getContext('2d')
+
+        let canvasOffsetX = (canvas.width / 2) + 0
+        let canvasOffsetY = (canvas.height / 2) + 0
+        let canvasScale = 20
+        let xStep = 0.005
+
+        let testFunction = "2x ^ 2 + 5"
+
+        let operators = {
+
+            "^": function(inp1, inp2) {
+                return inp1 ** inp2
+            },
+            "*": function(inp1, inp2) {
+                return inp1 * inp2
+            },
+            "/": function(inp1, inp2) {
+                return inp1 / inp2
+            },
+            "+": function(inp1, inp2) {
+                return inp1 + inp2
+            },
+            "-": function(inp1, inp2) {
+                return inp1 - inp2
+            }
+        }
+
+        let secondFunctions = {
+            "sin": function(inp) {
+                return Math.sin(inp)
+            },
+            "cos": function(inp) {
+                return Math.cos(inp)
+            },
+            "tan": function(inp) {
+                return Math.tan(inp)
+            },
+        }
+
+        let priorities = {
+            "^": 0,
+            "*": 1,
+            "/": 1,
+            "+": 2,
+            "-": 2,
+        }
+
+        function changeVal(val) {
+            testFunction = val
+        }
+
+        function sort() {
+            testFunction = testFunction.split(" ")
+
+            if (testFunction.length > 3) {
+                let sort1 = []
+                
+                for (var x = 1; x < testFunction.length; x += 2) {
+                    sort1.push(testFunction.slice(x, x + 2))
+                }
+                sort1.unshift(testFunction[0])
+
+                let pri0 = []
+                let pri1 = []
+                let pri2 = []
+
+                for (var x = 1; x < sort1.length; x++) {
+                    let curr = sort1[x].join(" ")
+                    if (priorities[curr[0]] == 0) {
+                        pri0.push(curr)
+                    } else if (priorities[curr[0]] == 1) {
+                        pri1.push(curr)
+                    } else if (priorities[curr[0]] == 2) {
+                        pri2.push(curr)
+                    }
+                }
+
+                let sort2 = []
+
+                sort2.push(pri0.join(" "))
+                sort2.push(pri1.join(" "))
+                sort2.push(pri2.join(" "))
+
+                sort2.unshift(sort1[0] + " ")
+
+            }
+            
+            process()
+        }
+
+        function process() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+            ctx.strokeStyle = "black"
+            ctx.lineWidth = "1"
+            
+            ctx.beginPath()
+            ctx.moveTo(0, canvasOffsetY - 0.5) 
+            ctx.lineTo(canvas.width, canvasOffsetY - 0.5)
+            ctx.stroke()
+
+            ctx.beginPath()
+            ctx.moveTo(canvasOffsetX - 0.5, 0)
+            ctx.lineTo(canvasOffsetX - 0.5, canvas.height)
+            ctx.stroke()
+
+            ctx.strokeStyle = "lightgrey"
+            ctx.lineWidth = "0.5"
+
+            for (var x = 0 - canvasOffsetX; x < canvas.width - canvasOffsetX; x += 10) {
+                ctx.fillRect(x + canvasOffsetX - 1, canvasOffsetY - 4, 1, 7)
+                if (x % 40 === 0) {
+                    ctx.strokeStyle = "grey"
+                    ctx.fillText(x / canvasScale, x + canvasOffsetX + 1, canvasOffsetY - 1)
+                } else {
+                    ctx.strokeStyle = "lightgrey"
+                }
+                ctx.beginPath()
+                ctx.moveTo(x + canvasOffsetX - 0.5, 0)
+                ctx.lineTo(x + canvasOffsetX - 0.5, canvas.height)
+                ctx.stroke()
+            }
+
+            for (var y = 0 - canvasOffsetY; y < canvas.height - canvasOffsetY; y += 10) {
+                ctx.fillRect(canvasOffsetX - 4, y + canvasOffsetY - 1, 7, 1)
+                if (y % 40 === 0) {
+                    ctx.strokeStyle = "grey"
+                    ctx.fillText(-y / canvasScale, canvasOffsetX + 1, y + canvasOffsetY - 1)
+                } else {
+                    ctx.strokeStyle = "lightgrey"
+                }
+                ctx.beginPath()
+                ctx.moveTo(0, y + canvasOffsetY - 0.5)
+                ctx.lineTo(canvas.width, y + canvasOffsetY - 0.5)
+                ctx.stroke()
+            }
+
+            let xLocations = []
+
+            for (var x = 0; x < testFunction.length; x++) {
+                if (testFunction[x].includes('x')) {
+                    xLocations.push(x)
+                }
+            }
+
+            for (var x = 0 - canvasOffsetX; x < canvas.width - canvasOffsetX; x += xStep) {
+                try {
+                    let y = testFunction[0]
+                    
+                    if (y == "x") {
+                        y = x
+                    } else if (y.includes("x")) {
+                        y = Number(y.substring(0, y.indexOf("x"))) * x
+                    } else {
+                        y = Number(y)
+                    }
+
+                    for (var seg = 0; seg < testFunction.length - 1; seg += 2) {
+                        let newTest = testFunction.slice(seg, seg + 3)
+
+                        let op = newTest[1]
+
+                        let part2 = String(newTest[2])
+                        if (part2 == "x") {
+                            part2 = x
+                        } else if (part2.includes("x")) {
+                            part2 = Number(part2.substring(0, part2.indexOf("x"))) * x
+                        } else {
+                            part2 = Number(part2)
+                        }
+
+                        y = operators[op](y, part2)
+                    }
+
+                    ctx.fillStyle = "black"
+                    let xLocation = -x * canvasScale + canvasOffsetX - 0.5
+                    let yLocation = -y * canvasScale + canvasOffsetY - 0.5
+
+                    ctx.fillRect(xLocation, yLocation, 1, 1)
+                } catch (error) {
+                    alert(error)
+                }
+            }
+        }
+
+        document.body.addEventListener('keydown', keydown) 
+
+        function keydown(e) {
+            if (e.target == document.body) {
+                if (e.key == "ArrowUp") {
+                    e.preventDefault()
+                    canvasOffsetY -= 10
+                    process()
+                } else if (e.key == "ArrowDown") {
+                    e.preventDefault()
+                    canvasOffsetY += 10
+                    process()
+                } else if (e.key == "ArrowLeft") {
+                    e.preventDefault()
+                    canvasOffsetX -= 10
+                    process()
+                } else if (e.key == "ArrowRight") {
+                    e.preventDefault()
+                    canvasOffsetX += 10
+                    process()
+                } else if (e.key == "-") {
+                    canvasScale /= 1.5
+                    process()
+                } else if (e.key == "=") {
+                    canvasScale *= 1.5
+                    process()
+                }
+            }
+        }
+
+        sort()
+    </script>
+</body>
+</html>

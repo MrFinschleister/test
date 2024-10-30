@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <input type="text" id="numInput">
+    <button onclick="parse()">Parse</button>
+
+    <script>
+        function parse() {
+            let operator = 1
+
+            let num = parseFloat(document.getElementById('numInput').value)
+
+            let numString1 = String(num)
+
+            num = parseInt(num)
+
+            let numString2 = String(num)
+ 
+            if (numString1.length > numString2.length || num < 0) {
+                alert("fuck u")
+                return
+            }
+
+            while (operator * 2 <= num) {
+                operator *= 2
+            }
+
+            let returnNum = []
+            while (operator >= 1) {
+                if (num - operator >= 0) {
+                    returnNum.push(1)
+                    num -= operator
+                } else {
+                    returnNum.push(0)
+                }
+                operator /= 2
+            }
+
+            if (returnNum.length < 8) {
+                while (returnNum.length < 8) {
+                    returnNum.unshift(0)
+                }
+            }
+
+            returnNum = returnNum.join("")
+            
+            alert(returnNum)
+        }
+    </script>
+</body>
+</html>

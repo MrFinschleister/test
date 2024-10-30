@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <button onclick="input()">input</button>
+    <canvas width="500" height="500" id="canvas" style="border: 1px black solid;"></canvas>
+    <script>
+        let canvas = document.getElementById('canvas')
+        let ctx = canvas.getContext('2d')
+
+        let canvasDepth = 500
+
+        let centerPoint = [canvas.width / 2, canvas.height / 2, canvasDepth / 2]
+
+        /* framework:
+            {
+                type: ,
+                width: ,
+                height: ,
+                depth: ,
+                x: ,
+                y: ,
+                z: ,
+                rotate: ,
+                rotationX: ,
+            }
+        */
+        let objects = [
+            {
+                type: "rectPrism",
+                width: 200,
+                height: 200,
+                depth: 500,
+                x: 400,
+                y: 400,
+                z: 250,
+                rotate: false,
+                rotationX: 0,
+            },
+            {
+                type: "rectPrism",
+                width: 50,
+                height: 50,
+                depth: 500,
+                x: 25,
+                y: 25,
+                z: 250,
+                rotate: false,
+                rotationX: -22.5,
+            },
+            {
+                type: "rectPrism",
+                width: 50,
+                height: 50,
+                depth: 450,
+                x: 75,
+                y: 25,
+                z: 275,
+                rotate: false,
+                rotationX: -45,
+            },
+            {
+                type: "rectPrism",
+                width: 50,
+                height: 50,
+                depth: 400,
+                x: 125,
+                y: 25,
+                z: 300,
+                rotate: false,
+                rotationX: -67.5,
+            },
+            {
+                type: "rectPrism",
+                width: 50,
+                height: 50,
+                depth: 350,
+                x: 175,
+                y: 25,
+                z: 325,
+                rotate: false,
+                rotationX: -90,
+            },
+            {
+                type: "rectPrism",
+                width: 50,
+                height: 50,
+                depth: 300,
+                x: 225,
+                y: 25,
+                z: 350,
+                rotate: false,
+                rotationX: -112.5,
+            },
+            {
+                type: "rectPrism",
+                width: 50,
+                height: 50,
+                depth: 250,
+                x: 275,
+                y: 25,
+                z: 375,
+                rotate: false,
+                rotationX: -135,
+            },
+            {
+                type: "rectPrism",
+                width: 50,
+                height: 50,
+                depth: 200,
+                x: 325,
+                y: 25,
+                z: 400,
+                rotate: false,
+                rotationX: -157.5,
+            },
+            {
+                type: "rectPrism",
+                width: 50,
+                height: 50,
+                depth: 150,
+                x: 375,
+                y: 25,
+                z: 425,
+                rotate: false,
+                rotationX: -180,
+            },
+            {
+                type: "rectPrism",
+                width: 50,
+                height: 50,
+                depth: 100,
+                x: 425,
+                y: 25,
+                z: 450,
+                rotate: false,
+                rotationX: -202.5,
+            },
+            {
+                type: "rectPrism",
+                width: 50,
+                height: 50,
+                depth: 50,
+                x: 475,
+                y: 25,
+                z: 475,
+                rotate: false,
+                rotationX: -225,
+            },
+        ]
+
+        let shapes = {
+            rectPrism: function(sel) {
+                let obj = objects[sel]
+                let width = obj.width
+                let height = obj.height
+                let depth = obj.depth
+                
+                let rotate = obj.rotate
+                let rotationX = obj.rotationX
+
+                let x = obj.x
+                let y = obj.y
+                let z = obj.z
+
+                let offset = [x - centerPoint[0], y - centerPoint[1]]
+
+                let halfWidth = width / 2
+                let halfHeight = height / 2
+                let halfDepth = depth / 2
+
+                let zScale1 = 2 - (z - halfDepth) / canvasDepth
+                let zScale2 = 2 - (z + halfDepth) / canvasDepth
+
+                zScale1 /= 2
+                zScale2 /= 2
+
+                let halfWidth1 = halfWidth * zScale1
+                let halfHeight1 = halfHeight * zScale1
+
+                let halfWidth2 = halfWidth * zScale2
+                let halfHeight2 = halfHeight * zScale2
+
+                let x1 = x - (offset[0] * (1 - zScale1))
+                let y1 = y - (offset[1] * (1 - zScale1))
+
+                let x2 = x - (offset[0] * zScale2)
+                let y2 = y - (offset[1] * zScale2)
+
+                let p1 = [x1 - halfWidth1, y1 - halfHeight1]
+                let p2 = [x1 - halfWidth1, y1 + halfHeight1]
+                let p3 = [x1 + halfWidth1, y1 + halfHeight1]
+                let p4 = [x1 + halfWidth1, y1 - halfHeight1]
+
+                let p5 = [x2 - halfWidth2, y2 - halfHeight2]
+                let p6 = [x2 - halfWidth2, y2 + halfHeight2]
+                let p7 = [x2 + halfWidth2, y2 + halfHeight2]
+                let p8 = [x2 + halfWidth2, y2 - halfHeight2]
+
+                if (rotationX % 360 != 0 && rotate) {
+                    rotationX = rotationX * (Math.PI / 180)
+
+                    let origin1 = [x1, y1]
+                    p1 = operations.rotate(p1, origin1, rotationX)
+                    p2 = operations.rotate(p2, origin1, rotationX)
+                    p3 = operations.rotate(p3, origin1, rotationX)
+                    p4 = operations.rotate(p4, origin1, rotationX)
+
+                    let origin2 = [x2, y2]
+                    p5 = operations.rotate(p5, origin2, rotationX)
+                    p6 = operations.rotate(p6, origin2, rotationX)
+                    p7 = operations.rotate(p7, origin2, rotationX)
+                    p8 = operations.rotate(p8, origin2, rotationX)
+                }
+            
+
+                let colorSide = "rgba(0, 0, 0, 0.2)"
+
+                renders.plane(p5, p6, p7, p8, "rgba(0, 0, 255, 0.25)")
+                renders.plane(p1, p2, p3, p4, "rgba(255, 0, 0, 0.25)")
+
+                renders.plane(p1, p2, p6, p5, colorSide)
+                renders.plane(p2, p3, p7, p6, colorSide)
+                renders.plane(p3, p4, p8, p7, colorSide)
+                renders.plane(p4, p1, p5, p8, colorSide)
+            }
+        }
+
+        let renders = {
+            plane: function(p1, p2, p3, p4, color) {
+                ctx.fillStyle = color
+                ctx.beginPath()
+                ctx.moveTo(p1[0], p1[1])
+                ctx.lineTo(p2[0], p2[1])
+                ctx.lineTo(p3[0], p3[1])
+                ctx.lineTo(p4[0], p4[1])
+                ctx.lineTo(p1[0], p1[1])
+                ctx.stroke()
+                ctx.fill()
+            }
+        }
+
+        let operations = {
+            rotate: function(point, origin, deg) {
+                let originOffset = [0 - origin[0], 0 - origin[1]]
+                let point2 = [point[0] + originOffset[0], point[1] + originOffset[1]]
+                let x = (point2[0] * Math.cos(deg)) - (point2[1] * Math.sin(deg))
+                let y = (point2[0] * Math.sin(deg)) + (point2[1] * Math.cos(deg))
+
+                return [x - originOffset[0], y - originOffset[1]]
+            }
+        }
+        
+        function start() {
+            let order = {}
+
+            let frOrder = []
+
+            for (var x = 0; x < objects.length; x++) {
+                if (!order[objects[x].z]) {
+                    order[objects[x].z] = []
+                }
+                order[objects[x].z].push(x)
+            }
+
+            let keys = Object.keys(order)
+
+            keys.sort((a, b) => Number(a) + Number(b))
+
+            for (var x = 0; x < keys.length; x++) {
+                for (var y = 0; y < order[keys[x]].length; y++) {
+                    frOrder.push(order[keys[x]][y])
+                }
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height)
+            ctx.fillRect(centerPoint[0] - 2, centerPoint[1] - 2, 4, 4) 
+            
+            let color = "rgba(0, 0, 0, 0)"
+
+            let p1 = [0, 0]
+            let p2 = [0, canvas.height]
+            let p3 = [canvas.width, canvas.height]
+            let p4 = [canvas.width, 0]
+
+            let p5 = [canvas.width * 0.25, canvas.height * 0.25]
+            let p6 = [canvas.width * 0.25, canvas.height * 0.75]
+            let p7 = [canvas.width * 0.75, canvas.height * 0.75]
+            let p8 = [canvas.width * 0.75, canvas.height * 0.25]
+
+            renders.plane(p1, p2, p3, p4, color)
+            renders.plane(p5, p6, p7, p8, color)
+
+            renders.plane(p1, p2, p6, p5, color)
+            renders.plane(p2, p3, p7, p6, color)
+            renders.plane(p3, p4, p8, p7, color)
+            renders.plane(p4, p1, p5, p8, color)
+
+            for (var x = 0; x < frOrder.length; x++) {
+                shapes[objects[x].type](x)
+            }
+        }
+
+        function input() {
+            let inp = prompt("gimme")
+            objects = JSON.parse(inp)
+            start()
+        }
+
+        start()
+    </script>
+</body>
+</html>
