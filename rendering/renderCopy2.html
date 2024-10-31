@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body onload="onload()">
+    <button onclick="input()">input</button>
+    <canvas width="1000" height="500" id="canvas" style="border: 1px black solid;"></canvas>
+    <button onclick="spin()">Spin</button>
+    <div id="console"></div>
+    <script src="console.js"></script>
+    <script>
+        let canvas = document.getElementById('canvas')
+        let ctx = canvas.getContext('2d')
+
+        let canvasDepth = 1000
+        let dilationFactor = 500
+        let farthestZScale
+        let lineNumber = 10
+
+        let centerPoint
+        let trueOrigin = [0, 0, 0]
+
+        let globalRotate = true
+        let globalRotationX = 0
+        let globalRotationY = 0
+        let globalRotationZ = 0
+
+        let crosshairSize = 6
+
+        let objects = [
+            {
+                type: "pyramid4",
+                visible: true,
+                width: 50,
+                height: 50,
+                depth: 50,
+                x: 500,
+                y: 250,
+                z: 750,
+                rotate: true,
+                rotationX: -90,
+                rotationY: 0,
+                rotationZ: 0,
+            },
+            {
+                type: "rectPrism",
+                visible: false,
+                width: 50,
+                height: 50,
+                depth: 50,
+                x: 500,
+                y: 250,
+                z: 750,
+                rotate: true,
+                rotationX: -45,
+                rotationY: -45,
+                rotationZ: -45,
+            },
+            {
+                type: "rectPrism",
+                visible: false,
+                width: 1000,
+                height: 100,
+                depth: 200,
+                x: 500,
+                y: 450,
+                z: 100,
+                rotate: false,
+                rotationX: 0,
+                rotationY: 0,
+                rotationZ: 0,
+            },
+        ]
+
+        let shapes = {
+            rectPrism: function(sel) {
+                let obj = objects[sel]
+                let width = obj.width
+                let height = obj.height
+                let depth = obj.depth
+                
+                let rotate = obj.rotate
+                let rotationX = obj.rotationX
+                let rotationY = obj.rotationY
+                let rotationZ = obj.rotationZ
+
+                let x = obj.x
+                let y = obj.y
+                let z = obj.z
+
+                let origin = [x, y, z]
+
+                let halfWidth = width / 2
+                let halfHeight = height / 2
+                let halfDepth = depth / 2
+
+                let p = []
+
+
+                p[0] = [x - halfWidth, y - halfHeight, z - halfDepth]
+                p[1] = [x - halfWidth, y + halfHeight, z - halfDepth]
+                p[2] = [x + halfWidth, y + halfHeight, z - halfDepth]
+                p[3] = [x + halfWidth, y - halfHeight, z - halfDepth]
+
+                p[4] = [x - halfWidth, y - halfHeight, z + halfDepth]
+                p[5] = [x - halfWidth, y + halfHeight, z + halfDepth]
+                p[6] = [x + halfWidth, y + halfHeight, z + halfDepth]
+                p[7] = [x + halfWidth, y - halfHeight, z + halfDepth]
+            
+                if (rotate) {
+                    rotationX = rotationX * (Math.PI / 180)
+                    rotationY = rotationY * (Math.PI / 180)
+                    rotationZ = rotationZ * (Math.PI / 180)
+
+                    p = operations.rotateX(p, rotationX, origin)
+                    p = operations.rotateY(p, rotationY, origin)
+                    p = operations.rotateZ(p, rotationZ, origin)
+                }
+
+                if (globalRotate) {
+                    let rotX = globalRotationX * (Math.PI / 180)
+                    let rotY = globalRotationY * (Math.PI / 180)
+                    let rotZ = globalRotationZ * (Math.PI / 180)
+
+                    p = operations.rotateX(p, rotX, centerPoint)
+                    p = operations.rotateY(p, rotY, centerPoint)
+                    p = operations.rotateZ(p, rotZ, centerPoint)
+                }
+
+                for (var n = 0; n < p.length; n++) {
+                    let selected = p[n]
+                    if (selected[2] > canvasDepth) {
+                        return
+                    }
+                }
+
+                let offset = [x - centerPoint[0], y - centerPoint[1], z - centerPoint[2]]
+
+                let zScaleOrigin = 0.5 / ((canvasDepth - origin[2]) / dilationFactor)
+
+                let zso = 1 - zScaleOrigin
+
+                origin = [origin[0] - (offset[0] * zso), origin[1] - (offset[1] * zso), origin[2]]
+
+                for (var n = 0; n < p.length; n++) {
+                    let point = p[n]
+
+                    let x1  = point[0]
+                    let y1 = point[1]
+                    let z1 = point[2]
+                    
+                    let pOffset = [x1 - centerPoint[0], y1 - centerPoint[1], z1 - centerPoint[2]]
+
+                    let zScale = 0.5 / ((canvasDepth - z1) / dilationFactor)
+                    let zs = 1 - zScale
+
+                    p[n] = [x1 - (pOffset[0] * zs), y1 - (pOffset[1] * zs), z1]
+                }
+                
+                let colorSide = "rgba(0, 0, 0, 0.2)"
+
+                renders.plane(p[4], p[5], p[6], p[7], "rgba(0, 0, 255, 0.25)")
+                renders.plane(p[0], p[1], p[2], p[3], "rgba(255, 0, 0, 0.25)")
+
+                renders.plane(p[0], p[1], p[5], p[4], colorSide)
+                renders.plane(p[1], p[2], p[6], p[5], colorSide)
+                renders.plane(p[2], p[3], p[7], p[6], colorSide)
+                renders.plane(p[3], p[0], p[4], p[7], colorSide)
+            },
+            wedge: function(sel) {
+                let obj = objects[sel]
+                let width = obj.width
+                let height = obj.height
+                let depth = obj.depth
+                
+                let rotate = obj.rotate
+                let rotationX = obj.rotationX
+                let rotationY = obj.rotationY
+                let rotationZ = obj.rotationZ
+
+                let x = obj.x
+                let y = obj.y
+                let z = obj.z
+
+                let origin = [x, y, z]
+
+                let halfWidth = width / 2
+                let halfHeight = height / 2
+                let halfDepth = depth / 2
+
+                let p = []
+
+
+                p[0] = [x - halfWidth, y - halfHeight, z - halfDepth]
+                p[1] = [x - halfWidth, y + halfHeight, z - halfDepth]
+
+                p[2] = [x - halfWidth, y - halfHeight, z + halfDepth]
+                p[3] = [x - halfWidth, y + halfHeight, z + halfDepth]
+                p[4] = [x + halfWidth, y + halfHeight, z + halfDepth]
+                p[5] = [x + halfWidth, y - halfHeight, z + halfDepth]
+            
+                if (rotate) {
+                    rotationX = rotationX * (Math.PI / 180)
+                    rotationY = rotationY * (Math.PI / 180)
+                    rotationZ = rotationZ * (Math.PI / 180)
+
+                    p = operations.rotateX(p, rotationX, origin)
+                    p = operations.rotateY(p, rotationY, origin)
+                    p = operations.rotateZ(p, rotationZ, origin)
+                }
+
+                if (globalRotate) {
+                    let rotX = globalRotationX * (Math.PI / 180)
+                    let rotY = globalRotationY * (Math.PI / 180)
+                    let rotZ = globalRotationZ * (Math.PI / 180)
+
+                    p = operations.rotateX(p, rotX, centerPoint)
+                    p = operations.rotateY(p, rotY, centerPoint)
+                    p = operations.rotateZ(p, rotZ, centerPoint)
+                }
+
+                for (var n = 0; n < p.length; n++) {
+                    let selected = p[n]
+                    if (selected[2] > canvasDepth) {
+                        return
+                    }
+                }
+
+                let offset = [x - centerPoint[0], y - centerPoint[1], z - centerPoint[2]]
+
+                let zScaleOrigin = 0.5 / ((canvasDepth - origin[2]) / dilationFactor)
+
+                let zso = 1 - zScaleOrigin
+
+                origin = [origin[0] - (offset[0] * zso), origin[1] - (offset[1] * zso), origin[2]]
+
+                for (var n = 0; n < p.length; n++) {
+                    let point = p[n]
+
+                    let x1  = point[0]
+                    let y1 = point[1]
+                    let z1 = point[2]
+                    
+                    let pOffset = [x1 - centerPoint[0], y1 - centerPoint[1], z1 - centerPoint[2]]
+
+                    let zScale = 0.5 / ((canvasDepth - z1) / dilationFactor)
+                    let zs = 1 - zScale
+
+                    p[n] = [x1 - (pOffset[0]* zs), y1 - (pOffset[1] * zs), z1]
+                }
+                
+                let colorSide = "rgba(0, 0, 0, 0.2)"
+
+                renders.plane(p[2], p[3], p[4], p[5], "rgba(0, 0, 255, 0.25)")
+                renders.plane(p[0], p[1], p[4], p[5], "rgba(255, 0, 0, 0.25)")
+
+                renders.plane(p[0], p[1], p[3], p[2], colorSide)
+                renders.triangle(p[0], p[2], p[5], colorSide)
+                renders.triangle(p[1], p[3], p[4], colorSide)
+            },
+            pyramid4: function(sel) {
+                let obj = objects[sel]
+                let width = obj.width
+                let height = obj.height
+                let depth = obj.depth
+                
+                let rotate = obj.rotate
+                let rotationX = obj.rotationX
+                let rotationY = obj.rotationY
+                let rotationZ = obj.rotationZ
+
+                let x = obj.x
+                let y = obj.y
+                let z = obj.z
+
+                let origin = [x, y, z]
+
+                let halfWidth = width / 2
+                let halfHeight = height / 2
+                let halfDepth = depth / 2
+
+                let p = []
+
+                p[0] = [x, y, z - halfDepth]
+
+                p[1] = [x - halfWidth, y - halfHeight, z + halfDepth]
+                p[2] = [x - halfWidth, y + halfHeight, z + halfDepth]
+                p[3] = [x + halfWidth, y + halfHeight, z + halfDepth]
+                p[4] = [x + halfWidth, y - halfHeight, z + halfDepth]
+            
+                if (rotate) {
+                    rotationX = rotationX * (Math.PI / 180)
+                    rotationY = rotationY * (Math.PI / 180)
+                    rotationZ = rotationZ * (Math.PI / 180)
+
+                    p = operations.rotateX(p, rotationX, origin)
+                    p = operations.rotateY(p, rotationY, origin)
+                    p = operations.rotateZ(p, rotationZ, origin)
+                }
+
+                if (globalRotate) {
+                    let rotX = globalRotationX * (Math.PI / 180)
+                    let rotY = globalRotationY * (Math.PI / 180)
+                    let rotZ = globalRotationZ * (Math.PI / 180)
+
+                    p = operations.rotateX(p, rotX, centerPoint)
+                    p = operations.rotateY(p, rotY, centerPoint)
+                    p = operations.rotateZ(p, rotZ, centerPoint)
+                }
+
+                for (var n = 0; n < p.length; n++) {
+                    let selected = p[n]
+                    if (selected[2] >= canvasDepth) {
+                        return
+                    }
+                }
+
+                let offset = [x - centerPoint[0], y - centerPoint[1], z - centerPoint[2]]
+
+                let zScaleOrigin = 0.5 / ((canvasDepth - origin[2]) / dilationFactor)
+
+                let zso = 1 - zScaleOrigin
+
+                origin = [origin[0] - (offset[0] * zso), origin[1] - (offset[1] * zso), origin[2]]
+
+                for (var n = 0; n < p.length; n++) {
+                    let point = p[n]
+
+                    let x1  = point[0]
+                    let y1 = point[1]
+                    let z1 = point[2]
+                    
+                    let pOffset = [x1 - centerPoint[0], y1 - centerPoint[1], z1 - centerPoint[2]]
+
+                    let zScale = 0.5 / ((canvasDepth - z1) / dilationFactor)
+                    let zs = 1 - zScale
+
+                    p[n] = [x1 - (pOffset[0]* zs), y1 - (pOffset[1] * zs), z1]
+                }
+                
+                let colorSide = "rgba(0, 0, 0, 0.2)"
+
+                renders.plane(p[1], p[2], p[3], p[4], "rgba(0, 0, 255, 0.25)")
+
+                renders.triangle(p[0], p[1], p[2], colorSide)
+                renders.triangle(p[0], p[2], p[3], colorSide)
+                renders.triangle(p[0], p[3], p[4], colorSide)
+                renders.triangle(p[0], p[4], p[1], colorSide)                
+            }
+        }
+
+        let renders = {
+            plane: function(p1, p2, p3, p4, color) {
+                ctx.fillStyle = color
+                ctx.beginPath()
+                ctx.moveTo(p1[0], p1[1])
+                ctx.lineTo(p2[0], p2[1])
+                ctx.lineTo(p3[0], p3[1])
+                ctx.lineTo(p4[0], p4[1])
+                ctx.lineTo(p1[0], p1[1])
+                ctx.stroke()
+                ctx.fill()
+                ctx.fillStyle = "black"
+            },
+            triangle: function(p1, p2, p3, color) {
+                ctx.fillStyle = color
+                ctx.beginPath()
+                ctx.moveTo(p1[0], p1[1])
+                ctx.lineTo(p2[0], p2[1])
+                ctx.lineTo(p3[0], p3[1])
+                ctx.lineTo(p1[0], p1[1])
+                ctx.stroke()
+                ctx.fill()
+                ctx.fillStyle = "black"
+            },
+            circle: function(p1, p2, p3, p4, r, color) {
+                ctx.fillStyle = color
+                ctx.beginPath()
+                ctx.moveTo(p1[0], p1[1])
+                ctx.arcTo(p2[0], p2[1], r, 0, Math.PI * 0.5)
+                ctx.arcTo(p3[0], p3[1], r, 0, Math.PI * 0.5)
+                ctx.arcTo(p4[0], p4[1], r, 0, Math.PI * 0.5)
+                ctx.arcTo(p1[0], p1[1], r, 0, Math.PI * 0.5)
+                ctx.stroke()
+                ctx.fill()
+                ctx.fillStyle = "black"
+            },
+            line: function(p1, p2, color) {
+                ctx.strokeStyle = color
+                ctx.beginPath()
+                ctx.moveTo(p1[0], p1[1])
+                ctx.lineTo(p2[0], p2[1])
+                ctx.stroke()
+                ctx.strokeStyle = "black"
+            },
+            point: function(p1, size, color) {
+                ctx.fillStyle = color
+                ctx.beginPath()
+                ctx.arc(p1[0], p1[1], size, 0, 2 * Math.PI)
+                ctx.fill()
+                ctx.stroke()
+                ctx.fillStyle = "black"
+            }
+        }
+
+        let operations = {
+            rotateX: function(obj, deg, origin) {
+                let nodes = obj
+
+                let sinDeg = Math.sin(deg)
+                let cosDeg = Math.cos(deg)
+
+                for (var n = 0; n < nodes.length; n++) {
+                    let selected = nodes[n]
+
+                    let y = selected[1]
+                    let z = selected[2]
+
+                    let originOffset = [0 - origin[0], 0 - origin[1], 0 - origin[2]]
+                    
+                    y += originOffset[1]
+                    z += originOffset[2]
+
+                    selected[1] = Number((y * cosDeg - z * sinDeg).toFixed(2))
+                    selected[2] = Number((z * cosDeg + y * sinDeg).toFixed(2))
+
+                    selected[1] -= originOffset[1]
+                    selected[2] -= originOffset[2]
+
+                    nodes[n] = selected
+                }
+                
+                return nodes
+            },
+            rotateY: function(obj, deg, origin) {
+                let nodes = obj
+
+                let sinDeg = Math.sin(deg)
+                let cosDeg = Math.cos(deg)
+
+                for (var n = 0; n < nodes.length; n++) {
+                    let selected = nodes[n]
+
+                    let x = selected[0]
+                    let z = selected[2]
+
+                    let originOffset = [0 - origin[0], 0 - origin[1], 0 - origin[2]]
+                    
+                    x += originOffset[0]
+                    z += originOffset[2]
+
+                    selected[0] = Number((x * cosDeg - z * sinDeg).toFixed(2))
+                    selected[2] = Number((z * cosDeg + x * sinDeg).toFixed(2))
+
+                    selected[0] -= originOffset[0]
+                    selected[2] -= originOffset[2]
+
+                    nodes[n] = selected
+                }
+
+                return nodes
+            },
+            rotateZ: function(obj, deg, origin) {
+                let nodes = obj
+
+                let sinDeg = Math.sin(deg)
+                let cosDeg = Math.cos(deg)
+
+                for (var n = 0; n < nodes.length; n++) {
+                    let selected = nodes[n]
+
+                    let x = selected[0]
+                    let y = selected[1]
+
+                    let originOffset = [0 - origin[0], 0 - origin[1], 0 - origin[2]]
+                    
+                    x += originOffset[0]
+                    y += originOffset[1]
+
+                    selected[0] = Number((x * cosDeg - y * sinDeg).toFixed(2))
+                    selected[1] = Number((y * cosDeg + x * sinDeg).toFixed(2))
+
+                    selected[0] -= originOffset[0]
+                    selected[1] -= originOffset[1]
+
+                    nodes[n] = selected
+                }
+                new Para(nodes)                
+                return nodes
+            },
+        }
+        
+        function start() {
+            centerPoint = [canvas.width / 2, canvas.height / 2, canvasDepth]
+
+            farthestZScale = canvasDepth / dilationFactor
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height)
+            
+            let halfWidth = canvas.width / 2
+            let halfHeight = canvas.height / 2
+
+            let zScale = 0.5 / farthestZScale
+
+            let p = []
+            p[0] = [centerPoint[0] - halfWidth, centerPoint[1] - halfHeight]
+            p[1] = [centerPoint[0] - halfWidth, centerPoint[1] + halfHeight]
+            p[2] = [centerPoint[0] + halfWidth, centerPoint[1] + halfHeight]
+            p[3] = [centerPoint[0] + halfWidth, centerPoint[1] - halfHeight]
+
+
+            p[4] = [centerPoint[0] - halfWidth, centerPoint[1] - halfHeight * zScale]
+            p[5] = [centerPoint[0] - halfWidth, centerPoint[1] + halfHeight * zScale]
+            p[6] = [centerPoint[0] + halfWidth, centerPoint[1] + halfHeight * zScale]
+            p[7] = [centerPoint[0] + halfWidth, centerPoint[1] - halfHeight * zScale]
+
+            renders.plane(p[1], p[5], p[6], p[2], "rgba(0, 0, 0, 0.1)")
+
+            renders.plane(p[0], p[3], p[7], p[4], "rgba(0, 0, 0, 0.1)")
+
+            renders.line([centerPoint[0] - crosshairSize, centerPoint[1], centerPoint[2]], [centerPoint[0] + crosshairSize, centerPoint[1], centerPoint[2]], "rgb(0, 0, 0)")
+            renders.line([centerPoint[0], centerPoint[1] - crosshairSize, centerPoint[2]], [centerPoint[0], centerPoint[1] + crosshairSize, centerPoint[2]], "rgb(0, 0, 0)")
+
+            for (var x = 0; x < canvas.width; x += canvas.width / lineNumber) {
+                let p1 = [x + (x - centerPoint[0]) * farthestZScale, centerPoint[1] - halfHeight]
+                let p2 = [x, centerPoint[1] - halfHeight * zScale]
+
+                let p3 = [x + (x - centerPoint[0]) * farthestZScale, centerPoint[1] + halfHeight]
+                let p4 = [x, centerPoint[1] + halfHeight * zScale]
+
+                renders.line(p1, p2, "rgb(0, 0, 0)")
+                renders.line(p3, p4, "rgb(0, 0, 0)")
+            }
+
+            for (var x = 0; x < objects.length; x++) {
+                if (objects[x].visible) {
+                    shapes[objects[x].type](x)
+                }
+            }
+        }
+
+        function input() {
+            let inp = prompt("gimme")
+            objects = JSON.parse(inp)
+            start()
+        }
+
+        function spin() {
+            setInterval(
+                function() {
+                    for (var x = 0; x < objects.length; x++) {
+                        let random1 = Math.floor(Math.random() * 2) - 1
+                        let random2 = Math.floor(Math.random() * 2) - 1
+                        let random3 = Math.floor(Math.random() * 2) - 1
+                        objects[x].rotationX += random1
+                        objects[x].rotationY += random2
+                        objects[x].rotationZ += random3
+
+                        let random4 = Math.floor(Math.random() * 7) - 3
+                        let random5 = Math.floor(Math.random() * 7) - 3
+                        let random6 = Math.floor(Math.random() * 7) - 3
+
+                        objects[x].width += random5
+                        objects[x].height += random5
+                        objects[x].depth += random6
+                        
+                        /*if (objects[x].rotate) {
+                            objects[x].rotationX += 1
+                            objects[x].rotationY += 1.5
+                            objects[x].rotationZ += 0.5
+                        }*/
+                    }
+
+                    start()
+                }, 1
+            )
+        }
+
+        function onload() {
+            document.body.addEventListener('keydown', keydown)
+            start()
+        }
+
+        function keydown(e) {
+            let movementSpeed = 25
+
+            let rotationSpeed = 5
+
+            let depthSpeed = 50
+
+            if (e.key == "w" || e.key == "W") {
+                objects[0].z -= movementSpeed
+            } else if (e.key == "s" || e.key == "S") {
+                objects[0].z += movementSpeed
+            } else if (e.key == "a" || e.key == "A") {
+                objects[0].x -= movementSpeed
+            } else if (e.key == "d" || e.key == "D") {
+                objects[0].x += movementSpeed
+            } else if (e.key == " ") {
+                objects[0].y -= movementSpeed
+            } else if (e.key == "Shift") {
+                objects[0].y += movementSpeed
+            } else if (e.key == "ArrowUp") {
+                globalRotationX += rotationSpeed
+            } else if (e.key == "ArrowDown") {
+                globalRotationX -= rotationSpeed
+            } else if (e.key == "ArrowLeft") {
+                globalRotationY += rotationSpeed
+            } else if (e.key == "ArrowRight") {
+                globalRotationY -= rotationSpeed
+            } else if (e.key == "-") {
+                canvasDepth += depthSpeed
+            } else if (e.key == "=") {
+                canvasDepth -= depthSpeed
+            }
+
+            start()
+        }
+    </script>
+</body>
+</html>
