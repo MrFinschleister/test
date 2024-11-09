@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <input type="file" onchange="start(this.files[0])">
+    <input type="text-field" id="inp" placeholder="inp">
+    <button onclick="start(false)">Start</button>
+
+    <input type="text" id="inp2" placeholder="inp2">
+    <button onclick="next()">Next</button>
+    <p id="output"></p>
+
+    <!--<input type="text" id="eval">
+    <button onclick="evlate()">Evaluate</button>-->
+
+    <script>
+        let startString = "The quick brown fox jumps over the lazy dog."
+
+        let c = {}
+
+        let punctuation = ".!?"
+        let specialChars = ":;-"
+
+        let sampleRange = 3
+
+        let maxLength = 500
+
+        async function start(file) {
+            if (file) {
+                let text = await file.text()
+                startString = text.split(" ")
+            } else {
+                startString = document.getElementById('inp').value.split(" ")
+            }
+
+            for (var x = 0; x < startString.length - 1; x++) {
+                let sel = startString[x]
+                let sel1 = startString[x+1]
+                if (!c[sel]) {
+                    c[sel] = {}
+                }
+                if (!c[sel][sel1]) {
+                    c[sel][sel1] = 1
+                } else if (c[sel][sel1]) {
+                    c[sel][sel1] += 1
+                }
+            }
+            document.getElementById('output').innerHTML = JSON.stringify(c)
+        }
+
+        function next() {
+            let keysLength = Object.keys(c).length
+            let curr = document.getElementById('inp2').value
+
+            let output = [curr]
+
+            if (!c[curr]) {
+                output.unshift(1)
+            }
+
+            let warning = false
+
+            while (true) {
+                if (output.length > keysLength) {
+                    break
+                }
+
+                let selWord
+
+                if (c[curr]) {
+                    let keys = Object.keys(c[curr])
+
+                    let sample = []
+
+                    for (var x = 0; x < keys.length; x++) {
+                        let sK = keys[x]
+                        
+                        for (var y = 0; y < c[curr][sK]; y++) {
+                            sample.push(sK)
+                        }
+                    }
+
+                    let random = Math.floor(Math.random() * sample.length)
+
+                    selWord = sample[random]
+                } else {
+                    let keys = Object.keys(c)
+                    selWord = keys[Math.floor(Math.random()*keys.length)]
+                }
+
+                curr = selWord
+
+                output.push(selWord)
+
+                if (output.length >= maxLength) {
+                    warning = true
+                }
+
+                if (punctuation.includes(curr[curr.length - 1])) {
+                    if (warning || Math.floor(Math.random()*100) == 0) {
+                        break
+                    } 
+                }
+            }
+
+            output = output.join(" ")
+
+            document.getElementById('output').innerHTML = output
+        }
+
+        function evlate() {
+            let x = 0
+            let array = [1, 2, 3, 4]
+            let input = document.getElementById('eval').value
+            try {
+                eval(input)
+            } catch (error) {
+                alert(error)
+            }
+        }
+    </script>
+</body>
+</html>
