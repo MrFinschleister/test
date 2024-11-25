@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    
+    <style>
+        body {
+            margin: 0;
+            padding: none;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body onload="onload()">
+    <canvas width="500" height="500" id="canvas" style="width: 100vw; height: 100vh;"></canvas>
+    
+    <script src="generateNoise.js"></script>
+    <script>
+        let canvas = document.getElementById('canvas')
+        let ctx = canvas.getContext('2d')
+
+        canvas.width = window.innerWidth
+        canvas.height = window.innerHeight
+
+        let map = []
+
+        let size = 1
+        let avgSpread = 2
+        let numAvgs = 3
+        let numMax = 1
+        let scale = 0
+        let adjustValues = true
+
+        let gSeed = "asdflkje"
+        let globalTime
+
+        let noise
+
+        function constructMap() {
+            globalTime = new Date()
+
+            let noise = new Noise(gSeed, numMax, scale, numAvgs, avgSpread, adjustValues)
+
+            map = noise.constructMap(canvas.width / size, canvas.height / size)
+
+            render()
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height)
+            
+            for (let y = 0; y < map.length; y++) {
+                for (let x = 0; x < map[y].length; x++) {
+                    let sel = map[y][x]
+
+                    ctx.globalAlpha = sel
+
+                    if (sel < numMax / 2) {
+                        ctx.fillStyle = "blue"
+                    } else {
+                        ctx.fillStyle = "green"
+                    }
+                    
+                    ctx.fillRect(x * size, y * size, size, size)
+                }
+            }
+
+            alert((new Date().getTime() - globalTime.getTime()) / 1000)
+        }
+
+        function onload() {
+            try {
+                document.addEventListener('keydown', function(e){
+                    if (e.key == "Enter") {
+                        gSeed = String(Math.floor(Math.random()*100000000))
+                        constructMap()
+                    }
+                })
+
+                constructMap()                
+            } catch (error) {
+                alert(error)
+            }
+        }
+    </script>
+</body>
+</html>
