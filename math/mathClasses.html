@@ -11,23 +11,28 @@
     <p id="dotProduct"></p>
     <p id="crossProduct"></p>
 
-    <script src="./mathClasses.js"></script>
+    <script src="classes/vector2.js"></script>
+    <script src="classes/vector2Computer.js"></script>
+    <script src="classes/matrix.js"></script>
+    <script src="classes/vector3.js"></script>
+    <script src="classes/vector3Computer.js"></script>
+    
     <script>
-        let fixedDec = 3
-        let dimensions = 3
-        let magnitudeMax = 1
+        let magnitudeMax = 3
 
         function onload() {
             try {
-                let v1 = new Vector(dimensions, magnitudeMax)
-                let v2 = new Vector(dimensions, magnitudeMax)
+                let v1 = new Vector2(1, 2, 3)
+                v1.randomiseVector(magnitudeMax)
+                let v2 = new Vector2(1, 2, 3)
+                v2.randomiseVector(magnitudeMax)
 
-                let vectorComputer = new VectorComputer(v1, v2)
+                let vectorComputer = new Vector2Computer(v1, v2)
 
-                document.getElementById('vector1').innerHTML = "vector 1: (" + v1.points.join(", ") + ")"
-                document.getElementById('vector2').innerHTML =  "vector 2: (" + v2.points.join(", ") + ")"
-                document.getElementById('dotProduct').innerHTML = "dot product: " + vectorComputer.dotProduct()
-                document.getElementById('crossProduct').innerHTML = "cross product: " + (vectorComputer.crossProduct().points || "not 3 dimensions")
+                document.getElementById('vector1').innerHTML = "vector 1: (" + v1.getVector().join(", ") + ") </br> - Magnitude: " + v1.getMagnitude().toFixed(3)
+                document.getElementById('vector2').innerHTML =  "vector 2: (" + v2.getVector().join(", ") + ") </br> - Magnitude: " + v2.getMagnitude().toFixed(3)
+                document.getElementById('dotProduct').innerHTML = "dot product: " + vectorComputer.dotProduct().toFixed(3)
+                /*document.getElementById('crossProduct').innerHTML = "cross product: " + (vectorComputer.crossProduct().getVector())*/
             } catch (error) {
                 alert(error.stack)
             }
