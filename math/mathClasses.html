@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body onload="onload()">
+    <p id="vector1"></p>
+    <p id="vector2"></p>
+    <p id="dotProduct"></p>
+    <p id="crossProduct"></p>
+
+    <script src="./mathClasses.js"></script>
+    <script>
+        let fixedDec = 3
+        let dimensions = 3
+        let magnitudeMax = 1
+
+        function onload() {
+            try {
+                let v1 = new Vector(dimensions, magnitudeMax)
+                let v2 = new Vector(dimensions, magnitudeMax)
+
+                let vectorComputer = new VectorComputer(v1, v2)
+
+                document.getElementById('vector1').innerHTML = "vector 1: (" + v1.points.join(", ") + ")"
+                document.getElementById('vector2').innerHTML =  "vector 2: (" + v2.points.join(", ") + ")"
+                document.getElementById('dotProduct').innerHTML = "dot product: " + vectorComputer.dotProduct()
+                document.getElementById('crossProduct').innerHTML = "cross product: " + (vectorComputer.crossProduct().points || "not 3 dimensions")
+            } catch (error) {
+                alert(error.stack)
+            }
+        }
+    </script>
+</body>
+</html>
