@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body onload="onload()">
+    <div id="input-div"></div>
+    <button id="show-info-div-button" onclick="hidescreen(true)">info</button>
+    <div id="screen-shader"></div>
+    <div id="info-div">
+        <p id="info-p-1">This site is a visualisation of escape time fractals. Put simply, these are just formulas using complex numbers that test how long a value will take to reach infinity. Most of these formulas derive one complex number from its X/Y position, and another from user inputs. The inputs on the top-left define four primary things: </p>
+        <ol id="info-ol"><li>Default X/Y - The independant variable of the formulas used for the fractals. If the fractal starts out looking really boring, try changing this.</li><li>P: This is used as a constant value in a few of the formulas. Only a few of them use it, but it has a pretty big effect on them.</li><li>Number Max: This is used to specify when a value will be considered "approaching infinity". Increasing it doesn't really do anything, but decreasing it can make some cool shapes.</li><li>Fractal Type &#40;the dropdown&#41;: This determines what formula will be used. Some of them are a little more complex than others, so they may slow down the simulation.</li></ol></li>
+        <p id="info-p-2">If you're on a computer, you can look around by drag clicking and zoom in by scrolling. You can also use WASD for navigation and I/L for zooming. If you're on a phone, just drag and zoom.</p>
+        <button id="info-button" onclick="openscreen()">Ok!</button>
+        <label id="info-label">Don't show again:</label>
+        <input type="checkbox" id="info-checkbox">
+    </div>
+    <canvas id="gl-canvas"></canvas>
+
+    <script src="./scripts/index.js"></script>
+    <script src="./scripts/eventInputs.js"></script>
+    <script src="./scripts/htmlInputs.js"></script>
+    <script src="./scripts/gl.js"></script>
+    <script src="./scripts/shaders.js"></script>
+</body>
+</html>

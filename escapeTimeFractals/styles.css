@@ -1,0 +1,121 @@
+body  {
+    margin: 0px;
+    padding: none;
+    overflow-y: hidden;
+    font-family:Geneva, sans-serif;
+}
+
+#gl-canvas {
+    width: 100vw;
+    height: 100vh;
+    background-color: black;
+}
+
+#input-div {
+    position: absolute;
+    margin: 1vh;
+    padding: 2vh;
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+
+#input-div label {
+    color: white;
+}
+
+#input-div input, select {
+    display: block;
+}
+
+.range {
+    accent-color: slategrey;
+    text-decoration: none;
+}
+
+#screen-shader {
+    position: absolute;
+    display: none;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.9);
+}
+
+#info-div {
+    position: absolute;
+    display: none;
+    background-color: rgba(255, 255, 255, 0.2);
+    width: 50vw;
+    height: 70vh;
+    left: 25vw;
+    top: 15vh;
+    border-radius: 1vh;
+    border: 1px grey solid;
+    overflow-y: scroll;
+}
+
+#info-p-1, #info-p-2 {
+    margin-top: 4%;
+    width: 90%;
+    justify-self: center;
+    text-align: center;
+    color: lightgray;
+    font-size: 18px;
+}
+
+#info-ol {
+    width: 90%;
+    justify-self: center;
+    color: lightgray;
+    font-size: 18px;
+    line-height: 1.4;
+}
+
+#info-button {
+    width: 20%;
+    height: 15%;
+    justify-self: center;
+    background-color: rgb(64, 90, 95);
+    margin-top: 2.5%;
+    margin-bottom: 2.5%;
+    border-radius: 1vh;
+    border: none;
+    font-size: 25px;
+    font-weight: bold;
+    color: white;
+    -webkit-text-stroke-color: darkgrey;
+    -webkit-text-stroke-width: 1px;
+    display: block;
+}
+
+#info-button:hover {
+    background-color: rgb(42, 60, 63);
+    border: 1px grey solid;
+}
+
+#info-label {
+    margin-left: 2%;
+    color: grey;
+    justify-self: center;
+}
+
+#info-checkbox {
+    justify-self: center;
+}
+
+#show-info-div-button {
+    position: absolute;
+    width: 3vw;
+    height: 3vh;
+    right: 2vh;
+    top: 2vh;
+    background-color: rgba(0, 0, 0, 0.2);
+    font-size: 1.5vh;
+    color: grey;
+    border: none;
+    border-radius: 1vh;
+}
+
+#show-info-div-button:hover {
+    background-color: rgba(0, 0, 0, 0.4);
+    border: 1px grey solid;
+}
