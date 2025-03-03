@@ -115,8 +115,33 @@
             }
 
             screenBound() {
-                if (this.position.x < 0 || this.position.x > canvas.width || this.position.y < 0 || this.position.y > canvas.height) {
-                    reset();
+                let contactX = false;
+                let contactY = false;
+
+                if (this.position.x < 0) {
+                    this.position.x = 0;
+                    contactX = true;
+                } else if (this.position.x > canvasWidth) {
+                    this.position.x = canvasWidth;
+                    contactX = true;
+                }
+                if (this.position.y < 0) {
+                    this.position.y = 0;
+                    contactY = true;
+                } else if (this.position.y > canvasHeight) {
+                    this.position.y = canvasHeight;
+                    contactY = true;
+                }
+
+                if (contactX) {
+                    this.velocity.x *= bounceDampening;
+                }
+                if (contactY) {
+                    this.velocity.y *= bounceDampening;
+                }
+
+                if (contactX || contactY) {
+                    score *= bouncePenalty;
                 }
             }
 
@@ -157,6 +182,8 @@
                 ctx.stroke();
                 ctx.fill();
 
+                ctx.lineWidth = "4";
+
                 let v1 = this.lastPos;
                 let v2 = this.lastLastPos;
                 let v3 = this.lastLastLastPos;
@@ -165,6 +192,8 @@
                 ctx.moveTo(pX, pY);
                 ctx.bezierCurveTo(v1.x, v1.y, v2.x, v2.y, v3.x, v3.y);
                 ctx.stroke();
+
+                ctx.lineWidth = "1";
             }
         }
 
@@ -202,9 +231,8 @@
                 let typeIndex = this.typeIndex;
                 let position = this.position;
                 let velocity = this.velocity;
-                let flee = this.flee
-
-                let nearbyOrganisms = 0;
+                let flee = this.flee;
+                let camouflage = this.camouflage;
 
                 for (let i = 0; i < organisms.length; i++) {
                     let selOrganism = organisms[i];
@@ -224,7 +252,7 @@
 
                     let reactionScalar;
 
-                    if (selOrganism.typeIndex == typeIndex) {
+                    if (selOrganism.typeIndex == typeIndex || selOrganism.camouflage == typeIndex || selOrganism.typeIndex == camouflage) {
                         reactionScalar = introspecies;
                     } else {
                         reactionScalar = interspecies * selOrganism.aggro;
@@ -241,14 +269,9 @@
                     }
 
                     if (magnitude < groupingRadius) {
-                        relativePosition.scale(reactionScalar);
+                        relativePosition.scale(-reactionScalar);
                         groupingForce.add(relativePosition);
-                        nearbyOrganisms++;
                     }
-                }
-
-                if (nearbyOrganisms > 0) {
-                    groupingForce.scale(-1 / nearbyOrganisms);
                 }
 
                 repellingForce.normalise();
@@ -274,7 +297,7 @@
             tick() {
                 if (this.attackPlayer) {
                     if (this.following) {
-                        this.playerDetectionRadius = this.type.playerDetectionRadius * this.speed;
+                        this.playerDetectionRadius = this.type.playerDetectionRadius * this.detectionMultiplier;
                     } else {
                         this.playerDetectionRadius = this.type.playerDetectionRadius;
                     }
@@ -350,7 +373,7 @@
                 followingRadius: 100,
                 followingWeight: 2,
                 groupingRadius: 150,
-                groupingWeight: 0.5,
+                groupingWeight: 2,
                 introspecies: 1,
                 interspecies: -1,
                 aggro: 1,
@@ -366,7 +389,7 @@
                 followingRadius: 100,
                 followingWeight: 2,
                 groupingRadius: 175,
-                groupingWeight: 1,
+                groupingWeight: 2,
                 introspecies: 1,
                 interspecies: -1,
                 aggro: 0.5,
@@ -402,8 +425,29 @@
                 introspecies: 1,
                 interspecies: 1,
                 attackPlayer: true,
-                playerDetectionRadius: 100,
-                aggro: -1,
+                playerDetectionRadius: 250,
+                detectionMultiplier: 1.5,
+                aggro: -2,
+            },
+            {
+                color: "rgb(25, 75, 25)",
+                strokeColor: "rgb(50, 150, 50)",
+                size: 2,
+                speed: 5,
+                fov: -0.5,
+                repellingRadius: 25,
+                repellingWeight: 5,
+                followingRadius: 150,
+                followingWeight: 5,
+                groupingRadius: 150,
+                groupingWeight: 5,
+                introspecies: 5,
+                interspecies: 0,
+                attackPlayer: true,
+                playerDetectionRadius: 50,
+                detectionMultiplier: 2,
+                camouflage: 2,
+                aggro: -5,
             },
             {
                 color: "rgb(150, 0, 100)",
@@ -435,12 +479,15 @@
         let player;
         let mouse;
 
+        let time = 0;
+        let cooldownPeriod = 50;
         let score = 0;
         let highscore = 0;
 
         let dangerWeight = 0.05;
         let speedWeight = 0.1;
         let timeWeight = 1;
+        let bouncePenalty = 0.5;
 
         let organisms = [];
 
@@ -450,6 +497,7 @@
         let gravity = new Vector2(0, -0.25);
 
         let hitboxPercent = 0.75; 
+        let bounceDampening = -0.75;
 
         function onload() {
             try {
@@ -466,7 +514,7 @@
                 canvas.addEventListener('mouseup', mouseup);
 
                 addOrganisms();
-                reset();
+                reset(true);
 
                 interval = setInterval(function() {
                     tick();
@@ -491,18 +539,24 @@
             mouse = null;
         }
 
-        function reset() {
+        function reset(first) {
             if (score > highscore) {
                 highscore = score;
             }
             
             score = 0;
+            time = 0;
 
-            player = new Player(new Vector2(canvasWidth / 2, canvasHeight / 2));
+            if (first) {
+                time = cooldownPeriod;
+                player = new Player(new Vector2(canvasWidth / 2, canvasHeight / 2));
+            }
+            
+            player.velocity.scale(0);
         }
 
         function addOrganisms() {
-            let numTypes = [100, 100, 200, 10, 1];
+            let numTypes = [100, 50, 200, 10, 40, 2];
 
             for (let i = 0; i < numTypes.length; i++) {
                 let num = numTypes[i];
@@ -519,25 +573,31 @@
         }
 
         function tick() {
+            if (!player) {
+                reset();
+                return;
+            }
+
             ctx.clearRect(0, 0, canvas.width, canvas.height)
+            time++;
 
             for (let i of organisms) {
-                if (i.attackPlayer) {
+                if (i.attackPlayer && time > cooldownPeriod) {
                     let relativePosition = i.position.difference(player.position);
 
                     if (relativePosition < i.playerDetectionRadius) {
-                        score += relativePosition * dangerWeight;
+                        score += (i.playerDetectionRadius - relativePosition) * dangerWeight;
 
-                        if (relativePosition < Math.sqrt((i.type.size ** 2) * 2) * hitboxPercent) {
+                        if (i.aggro && relativePosition < Math.sqrt((i.type.size ** 2) * 2) * hitboxPercent) {
                             reset();
                             return;
                         }
 
-                        if (relativePosition.dotProd(i.velocity) < i.type.fov) {
+                        if (relativePosition.dotProd(i.velocity) < i.fov) {
                             i.toggleAggro(true);
 
                             relativePosition.normalise();
-                            relativePosition.scale(i.type.aggro);
+                            relativePosition.scale(i.aggro);
                             i.playerForce = relativePosition;
                         }
                     } else {
@@ -551,7 +611,7 @@
 
             player.force(gravity);
 
-            if (mouse) {
+            if (time > cooldownPeriod && mouse) {
                 let difference = mouse.difference(player.position);
                 let distance = difference.magnitude();
 
@@ -569,6 +629,10 @@
             score += timeWeight;
 
             document.getElementById('score').innerHTML = "Score: " + score.toFixed(0) + "</br>High Score: " + highscore.toFixed(0);
+
+            if (time < cooldownPeriod) {
+                score = 0;
+            }
         }
     </script>
 </body>
