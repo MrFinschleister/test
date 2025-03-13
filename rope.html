@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+    <style>
+        body {
+            margin: 0;
+            padding: none;
+            overflow-y: hidden;
+        }
+    </style>
+</head>
+<body onload="onload()">
+    <canvas width="500" height="500" id="canvas" style="width: 100vw; height: 100vh; background-color: black;"></canvas>
+
+    <script src="../classes/vector2.js"></script>
+    <script>
+        class Point {
+            constructor(position, locked) {
+                this.position = position;
+                this.prevPosition = position;
+
+                this.locked = locked;
+                this.grabbed = false;
+                this.grabbedStrength = 0;
+            }
+        }
+
+        class Stick {
+            constructor(pointA, pointB, length, strength) {
+                this.pointA = pointA;
+                this.pointB = pointB;
+                this.length = length;
+                this.strength = strength;
+
+                this.inUse = true;
+            }
+        }
+
+        let canvas = document.getElementById('canvas');
+        let ctx = canvas.getContext('2d')
+
+        let interval;
+        let tickRate = 16;
+
+        let points = [];
+        let sticks = [];
+        let grid = [];
+
+        let cutting = false;
+        let grabbing = false;
+        let mouseStart;
+        let mouseEnd;
+
+        const numIterations = 5;
+        const lockedFrequency = 10;
+
+        const stickLength = 5;
+        const stickStrengthMultiplier = 5;
+        const stickStrength = stickLength * stickStrengthMultiplier;
+        const lockedStrengthMultiplier = 3;
+        const gravity = 0.05;
+        const friction = 0.99;
+
+        const size = 2;
+        
+        const gridWidth = 81;
+        const gridHeight = 80;
+
+        const grabDistance = 50;
+        const grabStrength = 0.01;
+        const cutImmediately = false;
+        const drawSticks = true;
+
+        function onload() {
+            try {
+                canvasSetup();
+                listenerSetup();
+                createPoints();
+                beginLoop();
+            } catch (error) {
+                alert(error.stack);
+            }
+        }
+
+        function canvasSetup() {
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+
+            ctx.transform(1, 0, 0, -1, canvas.width / 2, canvas.height / 2);
+        }
+        
+        function listenerSetup() {
+            canvas.addEventListener('mousedown', mousedown);
+            canvas.addEventListener('mousemove', mousemove);
+            canvas.addEventListener('mouseup', mouseup);
+        }
+
+        function createPoints() {
+            let centerX = gridWidth / -2;
+            let centerY = gridHeight / -2;
+
+            for (let x = 0; x < gridWidth; x++) {
+                grid[x] = [];
+
+                for (let y = 0; y < gridHeight; y++) {
+                    let newPoint = new Point(new Vector2((centerX + x) * stickLength, (centerY + y) * -stickLength), false);
+
+                    grid[x][y] = newPoint;
+                    points.push(newPoint);
+                }
+
+                if (x % lockedFrequency == 0) {
+                    grid[x][0].locked = true;
+                }
+            }
+
+            for (let x = 1; x < grid.length; x++) {
+                addStickFromIndices(x, 0, x - 1, 0, stickLength, stickStrength);
+
+                for (let y = 1; y < grid[x].length; y++) {
+                    addStickFromIndices(x, y, x - 1, y, stickLength, stickStrength);
+                    addStickFromIndices(x, y, x, y - 1, stickLength, stickStrength);
+
+                    if (x == 1) {
+                        addStickFromIndices(x - 1, y, x - 1, y - 1, stickLength, stickStrength);
+                    }
+                }
+            }
+        }
+
+        function addStickFromIndices(x1, y1, x2, y2, length, strength) {
+            let p1 = grid[x1][y1];
+            let p2 = grid[x2][y2];
+
+            if (p1.locked || p2.locked) {
+                strength *= lockedStrengthMultiplier;
+            }
+
+            let newStick = new Stick(p1, p2, length, strength);
+
+            sticks.push(newStick);
+        }
+
+        function beginLoop() {
+            interval = setInterval(function() {
+                simulate();
+                render();
+            }, tickRate)
+        }
+
+        function simulate() {
+            let halfWidth = canvas.width / 2;
+            let halfHeight = canvas.height / 2;
+
+            let gravVec = Vector2.down().scaled(gravity);
+
+            for (let p = 0; p < points.length; p++) {
+                let selP = points[p];
+
+                if (!selP.locked) {
+                    let position = selP.position;
+                    let prevPosition = selP.prevPosition;
+
+                    if (position.x < -halfWidth) {
+                        position.x = -halfWidth;
+                    } else if (position.x > halfWidth) {
+                        position.x = halfWidth;
+                    }
+
+                    if (position.y < -halfHeight) {
+                        position.y = -halfHeight;
+                    } else if (position.y > halfHeight) {
+                        position.y = halfHeight;
+                    }
+
+                    selP.prevPosition = position.clone();
+
+                    position.add(position.difference(prevPosition).scaled(friction));
+                    position.add(gravVec);
+
+                    if (grabbing) {
+                        if (selP.grabbed) {
+                            position.set(position.lerp(mouseEnd, selP.grabStrength));
+                        }
+                    }
+                }
+            }
+
+            for (let i = 0; i < numIterations; i++) {
+                for (let s = 0; s < sticks.length; s++) {
+                    let selS = sticks[s];
+
+                    if (selS.inUse) {   
+                        let pointA = selS.pointA;
+                        let pointB = selS.pointB;
+                        
+                        let posA = pointA.position;
+                        let posB = pointB.position;
+
+                        let difference = posA.difference(posB);
+
+                        if (difference.magnitude() > selS.strength) {
+                            selS.inUse = false;
+                            continue;
+                        }
+
+                        let stickCenter = posA.average(posB);
+                        let stickDir = difference.normalised();
+
+                        if (!pointA.locked) {
+                            pointA.position = stickCenter.sum(stickDir.scaled(selS.length / 2));
+                        }
+
+                        if (!pointB.locked) {
+                            pointB.position = stickCenter.difference(stickDir.scaled(selS.length / 2));
+                        }   
+                    } 
+                }
+            }
+        }
+
+        function render() {
+            ctx.clearRect(canvas.width / -2, canvas.height / -2, canvas.width, canvas.height);
+            ctx.fillStyle = "white";
+            ctx.strokeStyle = "white";
+
+            let halfSize = size / 2;
+            let canvasOffset = new Vector2(canvas.width, canvas.height).scaled(-0.5);
+
+            for (let p = 0; p < points.length; p++) {
+                let position = points[p].position;
+
+                ctx.fillRect(position.x - halfSize, position.y - halfSize, size, size);
+            }
+
+            if (cutting) {
+                ctx.beginPath();
+                ctx.moveTo(mouseStart.x, mouseStart.y);
+                ctx.lineTo(mouseEnd.x, mouseEnd.y);
+                ctx.stroke();
+            }
+
+            if (drawSticks) {
+                ctx.beginPath();
+                for (let s = 0; s < sticks.length; s++) {
+                    let selS = sticks[s];
+
+                    if (selS.inUse) {
+                        let pA = selS.pointA.position;
+                        let pB = selS.pointB.position;
+
+                        ctx.moveTo(pA.x, pA.y);
+                        ctx.lineTo(pB.x, pB.y);
+                    }
+                }            
+                ctx.stroke();
+            }
+        }
+
+        function mousedown(e) {
+            mouseStart = new Vector2(e.clientX - canvas.width / 2, canvas.clientHeight - e.clientY - canvas.height / 2);
+            mouseEnd = mouseStart;
+            
+            if (e.shiftKey) {
+                cutting = true;
+            } else {
+                grabbing = true;
+
+                calculateGrabs();
+            }
+        }
+
+        function mousemove(e) {
+            mouseEnd = new Vector2(e.clientX - canvas.width / 2, canvas.clientHeight - e.clientY - canvas.height / 2);
+            
+            if (cutting && e.shiftKey) {
+                if (cutImmediately) {
+                    calculateCuts();
+                }
+            } else {
+                cutting = false;
+            }
+        }
+
+        function mouseup(e) {
+            if (cutting && e.shiftKey) {
+                if (!cutImmediately) {
+                    calculateCuts();
+                }
+            }
+
+            resetGrabs();
+
+            mouseStart = undefined;
+            mouseEnd = undefined;
+            grabbing = false;
+            cutting = false;
+        }
+
+        function calculateCuts() {
+            if (!cutting) {
+                return
+            }
+
+            let x1 = mouseStart.x;
+            let y1 = mouseStart.y;
+            let x2 = mouseEnd.x;
+            let y2 = mouseEnd.y;
+
+            for (let s = 0; s < sticks.length; s++) {
+                let selS = sticks[s];
+
+                if (!selS.inUse) {
+                    continue;
+                }
+
+                let pointA = selS.pointA.position;
+                let pointB = selS.pointB.position;
+
+                let x3 = pointA.x;
+                let y3 = pointA.y;
+                let x4 = pointB.x;
+                let y4 = pointB.y;
+
+                let result = segmentSegmentIntersection(x1, y1, x2, y2, x3, y3, x4, y4);
+
+                if (result) {
+                    selS.inUse = false;
+                }
+            }
+        }
+
+        function calculateGrabs() {
+            for (let p = 0; p < points.length; p++) {
+                let selP = points[p];
+
+                let difference = selP.position.difference(mouseEnd);
+                let distance = difference.magnitude();
+
+                if (distance < grabDistance) {
+                    selP.grabStrength = grabStrength * distance / grabDistance; 
+                    selP.grabbed = true;
+                }
+            }
+        }
+
+        function resetGrabs() {
+            for (let p = 0; p < points.length; p++) {
+                let selP = points[p];
+
+                selP.grabbed = false;
+            }
+        }
+        
+        function segmentSegmentIntersection(x1, y1, x2, y2, x3, y3, x4, y4) {
+            let x1_x2 = x1 - x2;
+            let y3_y4 = y3 - y4;
+            let y1_y2 = y1 - y2;
+            let x3_x4 = x3 - x4;
+
+            let den = x1_x2 * y3_y4 - y1_y2 * x3_x4;
+
+            if (den == 0) {
+                return false;
+            }
+
+            let x1_x3 = x1 - x3;
+            let y1_y3 = y1 - y3;
+
+            let t =  (x1_x3 * y3_y4 - y1_y3 * x3_x4) / den;
+            let u = -(x1_x2 * y1_y3 - y1_y2 * x1_x3) / den;
+
+            if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
+                return true;
+            }
+
+            return false;
+        }
+    </script>
+</body>
+</html>

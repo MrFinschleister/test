@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+    <style>
+        body {
+            margin: 0;
+            padding: none;
+            overflow-y: hidden;
+        }
+    </style>
+</head>
+<body onload="onload()">
+    <canvas width="500" height="500" id="canvas" style="width: 100vw; height: 100vh; background-color: black;"></canvas>
+
+    <script src="../classes/classPackage.js"></script>
+    <script>
+        let canvas = document.getElementById('canvas');
+        let ctx = canvas.getContext('2d');
+
+        let numCircles = 500;
+        let numRectangles = 0;
+        
+        let length = 15;
+        let force = 0.75;
+        let gravity = new Vector2(0, 0.1);
+        let collisionDampening = 1;
+        let collisionPadding = 0;
+
+        let boundingMin = new Vector2(0, 0);
+        let boundingMax = new Vector2(0, 0);
+
+        let isRigid = true;
+
+        let interval;
+        let physicsWorld;
+
+        function randomWithinBounds() {
+            return new Vector2(Math.random() * (boundingMax.x - boundingMin.x) + boundingMin.x, Math.random() * (boundingMax.y - boundingMin.y) + boundingMin.y);
+        }
+
+        function onload() {
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+
+            let objects = [];
+
+            boundingMin.set(new Vector2(canvas.width / 4, canvas.height / 4));
+            boundingMax.set(new Vector2(canvas.width / 4 * 3, canvas.height / 4 * 3));
+
+            if (isRigid) {
+                physicsWorld = new RigidbodyPhysicsWorld2D();
+
+                for (let i = 0; i < numCircles; i++) {
+                    objects.push(new CircleRigidbodyPhysicsObject2D(randomWithinBounds(), length, collisionPadding));
+                }
+
+                for (let i = 0; i < numRectangles; i++) {
+                    objects.push(new RectangleRigidbodyPhysicsObject2D(randomWithinBounds(), length, length, collisionPadding));
+                }
+            } else {
+                physicsWorld = new SoftbodyPhysicsWorld2D();
+
+                for (let i = 0; i < numCircles; i++) {
+                    objects.push(new CircleSoftbodyPhysicsObject2D(randomWithinBounds(), force, length / 2, collisionPadding));
+                }
+
+                for (let i = 0; i < numRectangles; i++) {
+                    objects.push(new RectangleSoftbodyPhysicsObject2D(randomWithinBounds(), force, length, length, collisionPadding));
+                }
+
+            }
+            
+
+            for (let object of objects) {
+                physicsWorld.addPhysicsObject(object);
+            }
+            
+            physicsWorld.setGravity(gravity);
+            physicsWorld.setCollisionDampening(collisionDampening);
+            physicsWorld.setBoundingBox(boundingMin, boundingMax);
+            physicsWorld.enableBounding();
+            physicsWorld.enableCollisions();
+            physicsWorld.setPrintParticleConnections(false);
+
+            ctx.strokeStyle = "white";
+            ctx.fillStyle = "white";
+
+            tick(0);
+        }
+
+        function tick(t) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            physicsWorld.tick();
+            physicsWorld.printPhysicsObjects(ctx, 2);
+
+            window.requestAnimationFrame((t) => {tick(t)}); 
+        }
+    </script>
+</body>
+</html>
