@@ -1,10 +1,10 @@
 class Terminal {
     static init() {
         Terminal.commands = {
-            "eval": function(content){
+            "eval": function (content) {
                 eval(content);
             },
-            "collapse": function() {
+            "collapse": function () {
                 if (Terminal.collapsed) {
                     Terminal.el.style.height = "90vh";
                 } else {
@@ -33,10 +33,10 @@ class Terminal {
         Terminal.el.style.border = "1px black solid";
 
         Terminal.in = document.createElement('input');
-        Terminal.in.onchange = function() {
+        Terminal.in.onchange = function () {
             Terminal.inputCommand();
         }
-        
+
         Terminal.in.placeholder = "Input Command";
         Terminal.in.type = "text";
         Terminal.in.style.width = "25vw";
@@ -141,7 +141,7 @@ class Terminal {
 
     static createBenchmarkGroup(group) {
         if (!Terminal.benchmarkGroups[group]) {
-            Terminal.benchmarkGroups[group] = new BenchmarkGroup((text) => {Terminal.print(text)});
+            Terminal.benchmarkGroups[group] = new BenchmarkGroup((text) => { Terminal.print(text) });
         }
     }
 
@@ -201,8 +201,8 @@ class Benchmark {
 
 class BenchmarkGroup {
     constructor(printFn, elementFn) {
-        this.printFn = printFn || ((text) => {Terminal.out.print(text)});
-        this.elementFn = elementFn || ((element) => {Terminal.printElement(element)});
+        this.printFn = printFn || ((text) => { Terminal.out.print(text) });
+        this.elementFn = elementFn || ((element) => { Terminal.printElement(element) });
 
         this.benchmarks = [];
 
@@ -266,7 +266,7 @@ class BenchmarkGroup {
         let similarity = calculator.getSimilarity(regression.equation.fn);
 
         let newTimes = [];
-        
+
         for (let i of times) {
             newTimes.push([i[0], regression.equation.fn(i[0])]);
         }
@@ -297,7 +297,7 @@ class BenchmarkGroup {
             ctx.moveTo(sel00[0] * scaleX, sel00[1] * scaleY);
             ctx.lineTo(sel01[0] * scaleX, sel01[1] * scaleY);
             ctx.stroke();
-        
+
             ctx.strokeStyle = "blue";
             ctx.beginPath();
             ctx.moveTo(sel10[0] * scaleX, sel10[1] * scaleY);
@@ -526,7 +526,7 @@ class Matrix {
         let minors = this.replaceMinors();
         let signInverted = minors.invertSigns();
         let transposed = signInverted.transpose();
-        
+
         let result = transposed.scale(1 / determinant);
 
         return result;
@@ -542,9 +542,9 @@ class RegressionCalculator {
 
     // Find all regressions and return the best fit
     getBestRegression() {
-        let lin = {type: "linear", equation: this.linearRegression()};
-        let quad = {type: "quadratic", equation: this.quadraticRegression()};
-        let exp = {type: "exponential", equation: this.exponentialRegression()};
+        let lin = { type: "linear", equation: this.linearRegression() };
+        let quad = { type: "quadratic", equation: this.quadraticRegression() };
+        let exp = { type: "exponential", equation: this.exponentialRegression() };
 
         let equations = [lin, quad, exp];
 
@@ -590,10 +590,10 @@ class RegressionCalculator {
         const intercept = yBar - slope * xBar;
         const r = numerator / rDenom;
 
-        const fn = (x) => {return intercept + slope * x};
+        const fn = (x) => { return intercept + slope * x };
         const stringFn = `f(x) = ${intercept.toFixed(this.precision)} + ${slope.toFixed(this.precision)}x`;
         const format = "f(x) = a + bx";
-        const equation = {a: intercept, b: slope, r: r, fn: fn, stringFn: stringFn, format: format};
+        const equation = { a: intercept, b: slope, r: r, fn: fn, stringFn: stringFn, format: format };
 
         return equation;
     }
@@ -611,10 +611,10 @@ class RegressionCalculator {
         const calculator = new RegressionCalculator(newPoints);
         const linEquation = calculator.linearRegression();
 
-        const fn = (x) => {return Math.pow(Math.E, linEquation.a) * Math.pow(Math.pow(Math.E, linEquation.b), x)};
+        const fn = (x) => { return Math.pow(Math.E, linEquation.a) * Math.pow(Math.pow(Math.E, linEquation.b), x) };
         const stringFn = `f(x) = ${Math.pow(Math.E, linEquation.a).toFixed(this.precision)} * ${Math.pow(Math.E, linEquation.b).toFixed(this.precision)} ^ x)`;
         const format = "f(x) = ab ^ x";
-        const equation = {a: Math.pow(Math.E, linEquation.a), b: Math.pow(Math.E, linEquation.b), r: linEquation.r, fn: fn, stringFn: stringFn, format: format};
+        const equation = { a: Math.pow(Math.E, linEquation.a), b: Math.pow(Math.E, linEquation.b), r: linEquation.r, fn: fn, stringFn: stringFn, format: format };
 
         return equation;
     }
@@ -643,19 +643,19 @@ class RegressionCalculator {
             sXY += x * y;
             sX2Y += x * x * y;
         };
-        
+
         const intermediate = new Matrix(3, 3);
         intermediate.setMatrix([
             [sX4, sX3, sX2],
-            [sX3, sX2,  sX],
-            [sX2,  sX,   n],
+            [sX3, sX2, sX],
+            [sX2, sX, n],
         ]);
 
         const output = new Matrix(3, 1)
         output.setMatrix([
             [sX2Y],
-            [ sXY],
-            [  sY],
+            [sXY],
+            [sY],
         ]);
 
         const result = intermediate.invert().multiply(output);
@@ -664,10 +664,10 @@ class RegressionCalculator {
         const b = result.getValue(1, 0);
         const c = result.getValue(2, 0);
 
-        const fn = (x) => {return a * x * x + b * x + c};
+        const fn = (x) => { return a * x * x + b * x + c };
         const stringFn = `f(x) = ${a.toFixed(this.precision)}x ^ 2 + ${b.toFixed(this.precision)}x + ${c.toFixed(this.precision)}`;
         const format = "f(x) = ax ^ 2 + bx + c";
-        const equation = {a: a, b: b, c: c, fn: fn, stringFn: stringFn, format: format};
+        const equation = { a: a, b: b, c: c, fn: fn, stringFn: stringFn, format: format };
 
         return equation;
     }
@@ -675,7 +675,7 @@ class RegressionCalculator {
     // Find the similarity coefficient between the input function and the sample points
     getSimilarity(fn) {
         const n = this.points.length;
-        
+
         let sY = 0;
         let sSR = 0;
         let sST = 0;
@@ -710,10 +710,10 @@ class Vector2 {
     static neutral() {
         return new Vector2(0, 0);
     }
-    
+
     static unitRand() {
         let angle = Math.random() * Math.PI * 2;
-        
+
         return new Vector2(-Math.cos(angle), Math.sin(angle));
     }
 
@@ -721,16 +721,40 @@ class Vector2 {
         return new Vector2(0, 1);
     }
 
+    static upRand() {
+        return new Vector2(0, Math.random());
+    }
+
     static down() {
         return new Vector2(0, -1);
+    }
+
+    static downRand() {
+        return new Vector2(0, -Math.random());
     }
 
     static left() {
         return new Vector2(-1, 0);
     }
 
+    static leftRand() {
+        return new Vector2(-Math.random(), 0);
+    }
+
     static right() {
         return new Vector2(1, 0);
+    }
+
+    static rightRand() {
+        return new Vector2(Math.random(), 0);
+    }
+
+    static positive() {
+        return new Vector2(1, 1);
+    }
+
+    static negative() {
+        return new Vector2(-1, -1);
     }
 
     toString() {
@@ -813,6 +837,13 @@ class Vector2 {
         return Math.sqrt(xDiff * xDiff + yDiff * yDiff);
     }
 
+    squaredDistance(v2) {
+        let xDiff = this.x - v2.x;
+        let yDiff = this.y - v2.y;
+
+        return xDiff * xDiff + yDiff * yDiff;
+    }
+
     scaled(scalar) {
         return new Vector2(this.x * scalar, this.y * scalar);
     }
@@ -831,7 +862,7 @@ class Vector2 {
 
     average(v2) {
         return new Vector2((this.x + v2.x) / 2, (this.y + v2.y) / 2);
-    } 
+    }
 
     magnitude() {
         return Math.sqrt(this.x * this.x + this.y * this.y);
@@ -841,13 +872,20 @@ class Vector2 {
         return this.x * v2.x + this.y * v2.y;
     }
 
+    dotProdSelf() {
+        let x = this.x;
+        let y = this.y;
+
+        return x * x + y * y;
+    }
+
     capNum(num) {
         if (this.x > num) {
             this.x = num;
         } else if (this.x < -num) {
             this.x = -num;
         }
-        
+
         if (this.y > num) {
             this.y = num;
         } else if (this.y < -num) {
@@ -920,11 +958,11 @@ class Vector3 {
     static neutral() {
         return new Vector3(0, 0, 0);
     }
-    
+
     static unitRand() {
         let theta = Math.random() * Math.PI * 2;
         let phi = Math.random() * Math.PI;
-        
+
         return new Vector3(Math.sin(phi) * Math.cos(theta), Math.sin(phi) * Math.sin(theta), Math.cos(phi));
     }
 
@@ -1036,6 +1074,14 @@ class Vector3 {
         return Math.sqrt(xDiff * xDiff + yDiff * yDiff + zDiff * zDiff);
     }
 
+    squaredDistance(v2) {
+        let xDiff = this.x - v2.x;
+        let yDiff = this.y - v2.y;
+        let zDiff = this.z - v2.z;
+
+        return xDiff * xDiff + yDiff * yDiff + zDiff * zDiff;
+    }
+
     scaled(scalar) {
         return new Vector3(this.x * scalar, this.y * scalar, this.z * scalar);
     }
@@ -1054,7 +1100,7 @@ class Vector3 {
 
     average(v2) {
         return new Vector3((this.x + v2.x) / 2, (this.y + v2.y) / 2, (this.z + v2.z) / 2);
-    } 
+    }
 
     magnitude() {
         return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
@@ -1062,6 +1108,14 @@ class Vector3 {
 
     dotProd(v2) {
         return this.x * v2.x + this.y * v2.y + this.z * v2.z;
+    }
+
+    dotProdSelf() {
+        let x = this.x;
+        let y = this.y;
+        let z = this.z;
+
+        return x * x + y * y + z * z;
     }
 
     crossProd(v2) {
@@ -1078,7 +1132,7 @@ class Vector3 {
         } else if (this.x < -num) {
             this.x = -num;
         }
-        
+
         if (this.y > num) {
             this.y = num;
         } else if (this.y < -num) {
@@ -1110,7 +1164,7 @@ class Vector3 {
         return this.sum(new Vector3(v2.x - this.x, v2.y - this.y, v2.z - this.z).scaled(weight));
     }
 
-    
+
     scaleZ(scalar, origin) {
         let difference = this.difference(origin);
 
@@ -1186,20 +1240,20 @@ class Perlin {
             this.seed += String(seed).charCodeAt(x);
         }
 
-        this.perm = [151,160,137,91,90,15,
-            131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
-            190, 6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
-            88,237,149,56,87,174,20,125,136,171,168, 68,175,74,165,71,134,139,48,27,166,
-            77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,
-            102,143,54, 65,25,63,161, 1,216,80,73,209,76,132,187,208, 89,18,169,200,196,
-            135,130,116,188,159,86,164,100,109,198,173,186, 3,64,52,217,226,250,124,123,
-            5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,
-            223,183,170,213,119,248,152, 2,44,154,163, 70,221,153,101,155,167, 43,172,9,
-            129,22,39,253, 19,98,108,110,79,113,224,232,178,185, 112,104,218,246,97,228,
-            251,34,242,193,238,210,144,12,191,179,162,241, 81,51,145,235,249,14,239,107,
-            49,192,214, 31,181,199,106,157,184, 84,204,176,115,121,50,45,127, 4,150,254,
-            138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180];
-        
+        this.perm = [151, 160, 137, 91, 90, 15,
+            131, 13, 201, 95, 96, 53, 194, 233, 7, 225, 140, 36, 103, 30, 69, 142, 8, 99, 37, 240, 21, 10, 23,
+            190, 6, 148, 247, 120, 234, 75, 0, 26, 197, 62, 94, 252, 219, 203, 117, 35, 11, 32, 57, 177, 33,
+            88, 237, 149, 56, 87, 174, 20, 125, 136, 171, 168, 68, 175, 74, 165, 71, 134, 139, 48, 27, 166,
+            77, 146, 158, 231, 83, 111, 229, 122, 60, 211, 133, 230, 220, 105, 92, 41, 55, 46, 245, 40, 244,
+            102, 143, 54, 65, 25, 63, 161, 1, 216, 80, 73, 209, 76, 132, 187, 208, 89, 18, 169, 200, 196,
+            135, 130, 116, 188, 159, 86, 164, 100, 109, 198, 173, 186, 3, 64, 52, 217, 226, 250, 124, 123,
+            5, 202, 38, 147, 118, 126, 255, 82, 85, 212, 207, 206, 59, 227, 47, 16, 58, 17, 182, 189, 28, 42,
+            223, 183, 170, 213, 119, 248, 152, 2, 44, 154, 163, 70, 221, 153, 101, 155, 167, 43, 172, 9,
+            129, 22, 39, 253, 19, 98, 108, 110, 79, 113, 224, 232, 178, 185, 112, 104, 218, 246, 97, 228,
+            251, 34, 242, 193, 238, 210, 144, 12, 191, 179, 162, 241, 81, 51, 145, 235, 249, 14, 239, 107,
+            49, 192, 214, 31, 181, 199, 106, 157, 184, 84, 204, 176, 115, 121, 50, 45, 127, 4, 150, 254,
+            138, 236, 205, 93, 222, 114, 67, 29, 24, 72, 243, 141, 128, 195, 78, 66, 215, 61, 156, 180];
+
         this.randLookup = {};
         this.valLookup = {};
     }
@@ -1212,7 +1266,7 @@ class Perlin {
         h2 = h3 ^ (h2 ^ seed * 2869860233);
         h3 = h4 ^ (h3 ^ seed * 951274213);
         h4 = h1 ^ (h4 ^ seed * 2716044179);
-        
+
         h1 ^= (h2 ^ h3 ^ h4), h2 ^= h1, h3 ^= h1, h4 ^= h1;
         return Math.abs(h1 / (h2 ^ h3) * h4) % 1;
     }
@@ -1230,7 +1284,7 @@ class Perlin {
 
             return [x1, y1]
         }
-        
+
     }
 
     dotProduct(v1, x2, y2) {
@@ -1298,13 +1352,9 @@ class Perlin {
 class Particle2D {
     constructor(position) {
         this.position = position;
-        this.prevPosition = position.clone();;
+        this.prevPosition = position.clone();
+        this.velocity = Vector2.neutral();
         this.locked = false;
-        this.collided = false;
-    }
-
-    setCollided() {
-        this.collided = !this.collided;
     }
 
     lock() {
@@ -1317,18 +1367,20 @@ class Particle2D {
         }
     }
 
-    tick() {
-        this.collided = false;
+    tick(velocityMax) {
         if (!this.locked) {
-            let force = this.getInertia();
+            let position = this.position;
+            let prevPosition = this.prevPosition;
 
-            this.prevPosition.set(this.position);
-            this.position.add(force);
+            let force = position.difference(prevPosition);
+
+            if (velocityMax) {
+                force.capNum(velocityMax);
+            }
+
+            prevPosition.set(position);
+            position.add(force);
         }
-    }
-
-    getInertia() {
-        return this.position.difference(this.prevPosition);
     }
 }
 
@@ -1339,11 +1391,7 @@ class VelocityParticle2D {
         this.acceleration = Vector2.neutral();
         this.prevPosition = position.clone();;
         this.locked = false;
-        this.collided = false;
-    }
-
-    setCollided() {
-        this.collided = !this.collided;
+        this.density = 0;
     }
 
     lock() {
@@ -1351,7 +1399,6 @@ class VelocityParticle2D {
     }
 
     tick() {
-        this.collided = false;
         if (this.locked) {
             this.velocity.scale(0);
             this.acceleration.scale(0);
@@ -1372,13 +1419,12 @@ class VelocityParticle2D {
 }
 
 class ParticleConnection2D {
-    constructor(particleA, particleB, length, rigidity){
+    constructor(particleA, particleB, length, rigidity) {
         this.particleA = particleA;
         this.particleB = particleB;
 
         this.length = length;
         this.rigidity = rigidity;
-        this.damping = 1;
     }
 
     tick() {
@@ -1409,6 +1455,37 @@ class ParticleConnection2D {
     }
 }
 
+class ParticleLooseConnection2D {
+    constructor(particleA, particleB, length) {
+        this.particleA = particleA;
+        this.particleB = particleB;
+
+        this.length = length;
+    }
+
+    tick() {
+        let length = this.length;
+
+        let particleA = this.particleA;
+        let particleB = this.particleB;
+
+        let positionA = particleA.position;
+        let positionB = particleB.position;
+
+        let difference = positionA.difference(positionB);
+        let center = positionA.average(positionB);
+
+        let stickDir = difference.normalised().scaled(length / 2)
+
+        if (!particleA.locked) {
+            positionA.set(center.sum(stickDir));
+        }
+        if (!particleB.locked) {
+            positionB.set(center.difference(stickDir));
+        }
+    }
+}
+
 class RectangleCollider2D {
     constructor(position, width, height) {
         this.type = 0;
@@ -1426,107 +1503,31 @@ class CircleCollider2D {
     }
 }
 
-class CollisionDetector2D {
-    collision(collider1, collider2) {
-        let type1 = collider1.type;
-        let type2 = collider2.type;
-
-        switch (type1) {
-            case 0: {
-                switch (type2) {
-                    case 0: {
-                        return this.rectangleRectangleCollision(collider1, collider2);
-                    }
-
-                    case 1: {
-                        return this.circleRectangleCollision(collider1, collider2);
-                    }
-                }
-            }
-            case 1: {
-                switch (type2) {
-                    case 0: {
-                        return this.circleRectangleCollision(collider1, collider2);
-                    }
-
-                    case 1: {
-                        return this.circleCircleCollision(collider1, collider2);
-                    }
-                }
-            }
-        }
-    }
-
-    rectangleRectangleCollision(collider1, collider2) {
-        let difference = collider1.position.difference(collider2.position);
-
-        let combinedWidth = (collider1.width + collider2.width) / 2;
-        let combinedHeight = (collider1.height + collider2.height) / 2;
-
-        if (Math.abs(difference.x) <= combinedWidth && Math.abs(difference.y) <= combinedHeight) {
-            return difference.magnitude();
-        }
-
-        return false;
-    }
-
-    circleCircleCollision(collider1, collider2) {
-        let distance = collider1.position.distance(collider2.position);
-        let combinedRadius = collider1.radius + collider2.radius;
-
-        if (distance <= combinedRadius) {
-            return distance;
-        }
-
-        return false;
-    }
-
-    circleRectangleCollision(circleCollider, rectangleCollider) {
-        let difference = circleCollider.position.difference(rectangleCollider.position);
-
-        let diffX = Math.abs(difference.x);
-        let diffY = Math.abs(difference.y);
-
-        let radius = circleCollider.radius;
-        let halfWidth = rectangleCollider.width / 2;
-        let halfHeight = rectangleCollider.height / 2;
-
-        if (diffX > halfWidth + radius) {
-            return false;
-        }
-        if (diffY > halfHeight + radius) {
-            return false;
-        }
-
-        if (diffX <= halfWidth) {
-            return Math.sqrt(diffX ** 2 + diffY ** 2);
-        }
-        if (diffY <= halfHeight) {
-            return Math.sqrt(diffX ** 2 + diffY ** 2);
-        }
-
-        let cornerDistance_sq = (diffX - halfWidth) ** 2 + (diffY - halfHeight) ** 2;
-
-        if (cornerDistance_sq <= radius * radius) {
-            return Math.sqrt(diffX ** 2 + diffY ** 2);
-        }
-        
-        return false;
+class NullCollider2D {
+    constructor(position) {
+        this.position = position;
+        this.type = -1;
     }
 }
 
 class MeshSoftbodyPhysicsObject2D {
-    constructor(position, radius, particles, particleConnections, collisionPadding) {
+    constructor(position, particles, particleConnections, width, height, collisionPadding, numIterations, useCollision) {
         if (!collisionPadding) {
             collisionPadding = 0;
         }
-        
+
         this.position = position;
-        this.radius = radius;
+        this.width = width;
+        this.height = height;
         this.particles = particles;
         this.particleConnections = particleConnections;
+        this.numIterations = numIterations || 1;
 
-        this.collider = new CircleCollider2D(position, radius + collisionPadding);
+        if (useCollision) {
+            this.collider = new RectangleCollider2D(position, width + collisionPadding, height + collisionPadding);
+        } else {
+            this.collider = new NullCollider2D(position);
+        }
     }
 
     setPosition() {
@@ -1539,11 +1540,31 @@ class MeshSoftbodyPhysicsObject2D {
 
         let avgPosition = Vector2.neutral();
 
+        let minX;
+        let minY;
+        let maxX;
+        let maxY;
+
         for (let p = 0; p < particles.length; p++) {
             let particle = particles[p];
+            let position = particle.position;
 
-            avgPosition.add(particle.position);
+            avgPosition.add(position);
+
+            if (!minX || position.x < minX) {
+                minX = position.x;
+            } else if (!maxX || position.x > maxX) {
+                maxX = position.x;
+            }
+            if (!minY || position.y < minY) {
+                minY = position.y;
+            } else if (!maxY || position.y > maxY) {
+                maxY = position.y;
+            }
         }
+
+        this.collider.width = maxX - minX;
+        this.collider.height = maxY - minY;
 
         this.position.set(avgPosition.scaled(1 / length));
     }
@@ -1559,7 +1580,7 @@ class MeshSoftbodyPhysicsObject2D {
 }
 
 class RectangleSoftbodyPhysicsObject2D {
-    constructor(position, rigidity, width, height) {
+    constructor(position, rigidity, width, height, numIterations) {
         if (!collisionPadding) {
             collisionPadding = 0;
         }
@@ -1567,6 +1588,8 @@ class RectangleSoftbodyPhysicsObject2D {
         this.width = width;
         this.height = height;
         this.position = position;
+
+        this.numIterations = numIterations || 1;
 
         let halfWidth = width / 2;
         let halfHeight = height / 2;
@@ -1580,7 +1603,7 @@ class RectangleSoftbodyPhysicsObject2D {
         let side2 = new ParticleConnection2D(p2, p3, width, rigidity);
         let side3 = new ParticleConnection2D(p3, p4, height, rigidity);
         let side4 = new ParticleConnection2D(p4, p1, width, rigidity);
-        
+
         let crossLength = Math.sqrt(width * width + height * height);
 
         let cross5 = new ParticleConnection2D(p1, p3, crossLength, rigidity);
@@ -1622,13 +1645,15 @@ class RectangleSoftbodyPhysicsObject2D {
 }
 
 class CircleSoftbodyPhysicsObject2D {
-    constructor(position, rigidity, radius, collisionPadding) {
+    constructor(position, rigidity, radius, collisionPadding, numIterations) {
         if (!collisionPadding) {
             collisionPadding = 0;
         }
 
         this.position = position;
         this.radius = radius;
+        
+        this.numIterations = numIterations || 1;
 
         let steps = 8;
         let crossStep = 3;
@@ -1705,13 +1730,18 @@ class RectangleRigidbodyPhysicsObject2D {
         if (!collisionPadding) {
             collisionPadding = 0;
         }
-        
+
         this.type = 0;
+        this.density = 0;
         this.position = position;
         this.width = width;
         this.height = height;
         this.particle = new Particle2D(this.position);
-        this.collider = new RectangleCollider2D(this.position, this.width + collisionPadding, this.height + collisionPadding);
+        this.collider = new RectangleCollider2D(this.position, width + collisionPadding, height + collisionPadding);
+    }
+
+    applyForce(force) {
+        this.particle.force(force);
     }
 }
 
@@ -1720,16 +1750,117 @@ class CircleRigidbodyPhysicsObject2D {
         if (!collisionPadding) {
             collisionPadding = 0;
         }
-        
+
         this.type = 1;
+        this.density = 0;
         this.position = position;
-        this.radius = radius / 2;
+        this.radius = radius;
         this.particle = new Particle2D(this.position);
         this.collider = new CircleCollider2D(this.position, this.radius + collisionPadding);
     }
+
+    applyForce(force) {
+        this.particle.force(force);
+    }
 }
 
-class SoftbodyPhysicsWorld2D {
+class CollisionDetector2D {
+    collision(collider1, collider2) {
+        let type1 = collider1.type;
+        let type2 = collider2.type;
+
+        switch (type1) {
+            case 0: {
+                switch (type2) {
+                    case 0: {
+                        return this.rectangleRectangleCollision(collider1, collider2);
+                    }
+
+                    case 1: {
+                        return this.circleRectangleCollision(collider1, collider2);
+                    }
+                }
+            }
+            case 1: {
+                switch (type2) {
+                    case 0: {
+                        return this.circleRectangleCollision(collider1, collider2);
+                    }
+
+                    case 1: {
+                        return this.circleCircleCollision(collider1, collider2);
+                    }
+                }
+            }
+        }
+    }
+
+    rectangleRectangleCollision(collider1, collider2) {
+        let difference = collider1.position.difference(collider2.position);
+
+        let combinedWidth = (collider1.width + collider2.width) / 2;
+        let combinedHeight = (collider1.height + collider2.height) / 2;
+
+        if (Math.abs(difference.x) <= combinedWidth && Math.abs(difference.y) <= combinedHeight) {
+            return difference.magnitude();
+        }
+
+        return false;
+    }
+
+    circleCircleCollision(collider1, collider2) {
+        let pos1 = collider1.position;
+        let pos2 = collider2.position;
+
+        let diffX = pos1.x - pos2.x;
+        let diffY = pos1.y - pos2.y;
+        let distance = diffX * diffX + diffY * diffY;
+
+        let combinedRadius = collider1.radius + collider2.radius;
+
+        if (distance <= combinedRadius * combinedRadius) {
+            return Math.sqrt(distance);
+        }
+
+        return false;
+    }
+
+    circleRectangleCollision(circleCollider, rectangleCollider) {
+        let difference = circleCollider.position.difference(rectangleCollider.position);
+
+        let diffX = Math.abs(difference.x);
+        let diffY = Math.abs(difference.y);
+
+        let radius = circleCollider.radius;
+        let halfWidth = rectangleCollider.width / 2;
+        let halfHeight = rectangleCollider.height / 2;
+
+        if (diffX > halfWidth + radius) {
+            return false;
+        }
+        if (diffY > halfHeight + radius) {
+            return false;
+        }
+
+        if (diffX <= halfWidth) {
+            return Math.sqrt(diffX * diffX + diffY * diffY);
+        }
+        if (diffY <= halfHeight) {
+            return Math.sqrt(diffX * diffX + diffY * diffY);
+        }
+
+        let widthOverflow = diffX - halfWidth;
+        let heightOverflow = diffY - halfHeight;
+
+        if (widthOverflow * widthOverflow + heightOverflow * heightOverflow <= radius * radius) {
+            return Math.sqrt(diffX * diffX + diffY * diffY);
+        }
+
+        return false;
+    }
+}
+
+class PhysicsWorld2D {
     constructor() {
         this.gravity = Vector2.neutral();
         this.collisionDampening = -1;
@@ -1741,6 +1872,13 @@ class SoftbodyPhysicsWorld2D {
         this.doPrintParticleConnections = true;
         this.useBounding = false;
         this.useCollisions = false;
+        this.quadrantSize = 50;
+
+        this.collisionDampening = 1;
+        this.reboundDampening = 0.2;
+        this.friction = 1;
+        this.velocityMax = 2;
+        this.densitySamplingRadius = 15;
 
         this.physicsObjects = [];
     }
@@ -1761,6 +1899,26 @@ class SoftbodyPhysicsWorld2D {
         this.collisionDampening = collisionDampening;
     }
 
+    setReboundDampening(reboundDampening) {
+        this.reboundDampening = reboundDampening;
+    }
+
+    setFriction(friction) {
+        this.friction = friction;
+    }
+
+    setVelocityMax(velocityMax) {
+        this.velocityMax = velocityMax;
+    }
+
+    setQuadrantSize(quadrantSize) {
+        this.quadrantSize = quadrantSize;
+    }
+
+    setDensitySamplingRadius(densitySamplingRadius) {
+        this.densitySamplingRadius = densitySamplingRadius;
+    }
+
     enableBounding() {
         this.useBounding = !this.useBounding;
     }
@@ -1778,6 +1936,184 @@ class SoftbodyPhysicsWorld2D {
         this.physicsObjects.push(physicsObject);
     }
 
+    circleSegmentIntersection(pX, pY, radius, seg1, seg2) {
+        pX -= seg1.x;
+        pY -= seg1.y;
+
+        let dir = seg1.difference(seg2);
+        let length = dir.magnitude();
+        dir.normalise();
+
+        let b = -(dir.x * pX + dir.y * pY);
+        let c = pX * pX + pY * pY - radius * radius;
+        let descr = b * b - c;
+
+        if (descr > 0) {
+            let descrRoot = Math.sqrt(descr);
+
+            let t1 = b - descrRoot;
+            let t2 = b + descrRoot;
+
+            if (t1 >= -radius && t2 <= length + radius) {
+                return true;
+            }
+        }
+    }
+
+    rectangleRectangleCollision(collider1, collider2) {
+        let difference = collider1.position.difference(collider2.position);
+
+        let combinedWidth = (collider1.width + collider2.width) / 2;
+        let combinedHeight = (collider1.height + collider2.height) / 2;
+
+        if (Math.abs(difference.x) <= combinedWidth && Math.abs(difference.y) <= combinedHeight) {
+            return difference.magnitude();
+        }
+
+        return false;
+    }
+
+    circleCircleCollision(collider1, collider2) {
+        let pos1 = collider1.position;
+        let pos2 = collider2.position;
+
+        let diffX = pos1.x - pos2.x;
+        let diffY = pos1.y - pos2.y;
+        let distance = diffX * diffX + diffY * diffY;
+
+        let combinedRadius = collider1.radius + collider2.radius;
+
+        if (distance <= combinedRadius * combinedRadius) {
+            return Math.sqrt(distance);
+        }
+
+        return false;
+    }
+
+    circleRectangleCollision(circleCollider, rectangleCollider) {
+        let difference = rectangleCollider.position.difference(circleCollider.position);
+
+        let diffX = Math.abs(difference.x);
+        let diffY = Math.abs(difference.y);
+
+        let radius = circleCollider.radius;
+        let halfWidth = rectangleCollider.width / 2;
+        let halfHeight = rectangleCollider.height / 2;
+
+        if (diffX > halfWidth + radius) {
+            return false;
+        }
+        if (diffY > halfHeight + radius) {
+            return false;
+        }
+
+        if (diffX <= halfWidth) {
+            return Math.sqrt(diffX * diffX + diffY * diffY);
+        }
+        if (diffY <= halfHeight) {
+            return Math.sqrt(diffX * diffX + diffY * diffY);
+        }
+
+        let widthOverflow = diffX - halfWidth;
+        let heightOverflow = diffY - halfHeight;
+
+        if (widthOverflow * widthOverflow + heightOverflow * heightOverflow <= radius * radius) {
+            return Math.sqrt(diffX * diffX + diffY * diffY);
+        }
+
+        return false;
+    }
+
+    calculatePhysicsCollisions() {
+        let collisionDampening = this.collisionDampening;
+        let physicsObjects = this.physicsObjects;
+
+        let densitySamplingRadius_2 = this.densitySamplingRadius ** 2;
+
+        for (let p = 0; p < physicsObjects.length; p++) {
+            let sel1 = physicsObjects[p];
+            let collider1 = sel1.collider;
+            let type1 = collider1.type;
+
+            let pos1 = collider1.position;
+            let x1 = pos1.x;
+            let y1 = pos1.y;
+
+            let width1 = 0;
+            let height1 = 0;
+
+            let radius1 = 0;
+
+            if (type1 == 0) {
+                width1 = collider1.width;
+                height1 = collider1.height;
+            } else {
+                radius1 = collider1.radius;
+            }
+
+            let density = 0;
+            
+
+            for (let p1 = 0; p1 < physicsObjects.length; p1++) {
+                if (p1 == p) {
+                    continue;
+                }
+
+                let sel2 = physicsObjects[p1];
+                let collider2 = sel2.collider;
+                let type2 = collider2.type;
+
+                let pos2 = collider2.position;
+                let diffX = x1 - pos2.x;
+                let diffY = y1 - pos2.y;
+
+                let dist_2 = diffX * diffX + diffY * diffY;
+
+                let doesCollide = false;
+
+                if (type1 == 0) {
+                    if (type2 == 0) {
+                        let combinedWidth = (width1 + collider2.width) / 2;
+                        let combinedHeight = (height1 + collider2.height) / 2;
+
+                        if (Math.abs(diffX) <= combinedWidth && Math.abs(diffY) <= combinedHeight) {
+                            doesCollide = Math.sqrt(dist_2);
+                        }
+                    } else if (type2 == 1) {
+                        doesCollide = this.circleRectangleCollision(collider1, collider2);
+                    }
+                } else if (type1 == 1) {
+                    if (type2 == 0) {
+                        doesCollide = this.circleRectangleCollision(collider1, collider2);
+                    } else if (type2 == 1) {
+                        let combinedRadius = radius1 + collider2.radius;
+
+                        if (dist_2 <= combinedRadius * combinedRadius) {
+                            doesCollide = Math.sqrt(dist_2);
+                        }
+                    }
+                }
+
+                if (doesCollide) {
+                    let scale = collisionDampening / doesCollide;
+
+                    let direction = new Vector2(diffX * scale, diffY * scale);
+
+                    sel1.applyForce(direction);
+                    sel2.applyForce(direction.scaled(-1));
+                }
+
+                if (dist_2 < densitySamplingRadius_2) {
+                    density++;
+                }
+            }
+
+            sel1.density = density;
+        }
+    }
+}
+
+class SoftbodyPhysicsWorld2D extends PhysicsWorld2D {
     tick() {
         this.tickPhysicsObjects();
 
@@ -1787,11 +2123,14 @@ class SoftbodyPhysicsWorld2D {
     }
 
     tickPhysicsObjects() {
-        let boundingMin = this.boundingMin;
-        let boundingMax = this.boundingMax;
         let gravity = this.gravity;
         let useBounding = this.useBounding;
         let physicsObjects = this.physicsObjects;
+        let velocityMax = this.velocityMax;
+        let reboundDampening = this.reboundDampening;
+
+        let boundingMin = this.boundingMin;
+        let boundingMax = this.boundingMax;
 
         let bMinX = boundingMin.x;
         let bMinY = boundingMin.y;
@@ -1811,70 +2150,46 @@ class SoftbodyPhysicsWorld2D {
                 particle.tick();
 
                 if (useBounding) {
+                    let prevPosition = particle.prevPosition;
                     let position = particle.position;
-
-                    let bounded = false;
-
+    
                     let pX = position.x;
                     let pY = position.y;
     
+                    let reboundVector;
+    
                     if (pX < bMinX) {
                         position.x = bMinX;
-                        bounded = true;
+                        reboundVector = Vector2.right();
                     } else if (pX > bMaxX) {
                         position.x = bMaxX;
-                        bounded = true;
+                        reboundVector = Vector2.right();
                     }
                     if (pY < bMinY) {
                         position.y = bMinY;
-                        bounded = true;
+                        reboundVector = Vector2.up();
                     } else if (pY > bMaxY) {
                         position.y = bMaxY;
-                        bounded = true;
+                        reboundVector = Vector2.up();
                     }
-
-                    if (bounded) {
-                        particle.setCollided();
+    
+                    if (reboundVector) {
+                        let velocity = reboundVector.product(position.difference(prevPosition)).scaled(reboundDampening);
+                        velocity.capNum(velocityMax);
+                        particle.force(velocity);
                     }
                 }
             }
 
-            for (let pC = 0; pC < particleConnections.length; pC++) {
-                let particleConnection = particleConnections[pC];
-
-                particleConnection.tick();
+            for (let i = 0; i < physicsObject.numIterations; i++) {
+                for (let pC = 0; pC < particleConnections.length; pC++) {
+                    let particleConnection = particleConnections[pC];
+    
+                    particleConnection.tick();
+                }
             }
 
             physicsObject.setPosition();
-        }
-    }
-
-    calculatePhysicsCollisions() {
-        let collisionDampening = this.collisionDampening;
-        let collisionDetector = new CollisionDetector2D();
-        let physicsObjects = this.physicsObjects;
-     
-        for (let p = 0; p < physicsObjects.length; p++) {
-            let sel1 = physicsObjects[p];
-            let collider1 = sel1.collider;
-
-            for (let p1 = 0; p1 < physicsObjects.length; p1++) {
-                if (p == p1) {
-                    continue;
-                }
-
-                let sel2 = physicsObjects[p1];
-                let collider2 = sel2.collider;
-
-                let doesCollide = collisionDetector.collision(collider1, collider2);
-
-                if (doesCollide) {
-                    let distance = collider1.position.difference(collider2.position).scaled(collisionDampening / doesCollide);
-
-                    sel1.applyForce(distance);
-                    sel2.applyForce(distance.scaled(-1));
-                }
-            }
         }
     }
 
@@ -1898,7 +2213,7 @@ class SoftbodyPhysicsWorld2D {
                 for (let p = 0; p < particles.length; p++) {
                     let particle = particles[p];
                     let position = particle.position;
-    
+
                     ctx.fillRect(position.x - halfSize, position.y - halfSize, size, size);
                 }
             }
@@ -1911,7 +2226,7 @@ class SoftbodyPhysicsWorld2D {
 
                     let pos1 = particleConnection.particleA.position;
                     let pos2 = particleConnection.particleB.position;
-    
+
                     ctx.moveTo(pos1.x, pos1.y);
                     ctx.lineTo(pos2.x, pos2.y);
                 }
@@ -1922,55 +2237,7 @@ class SoftbodyPhysicsWorld2D {
     }
 }
 
-class RigidbodyPhysicsWorld2D {
-    constructor() {
-        this.gravity = Vector2.neutral();
-        this.collisionDampening = -1;
-
-        this.boundingMin = Vector2.neutral();
-        this.boundingMax = Vector2.neutral();
-
-        this.doPrintParticles = true;
-        this.doPrintParticleConnections = true;
-        this.useBounding = false;
-        this.useCollisions = false;
-
-        this.physicsObjects = [];
-    }
-
-    setPrintParticles(doPrintParticles) {
-        this.doPrintParticles = doPrintParticles;
-    }
-
-    setPrintParticleConnections(doPrintParticleConnections) {
-        this.doPrintParticleConnections = doPrintParticleConnections;
-    }
-
-    setGravity(gravity) {
-        this.gravity.set(gravity);
-    }
-
-    setCollisionDampening(collisionDampening) {
-        this.collisionDampening = collisionDampening;
-    }
-
-    enableBounding() {
-        this.useBounding = !this.useBounding;
-    }
-
-    enableCollisions() {
-        this.useCollisions = !this.useCollisions;
-    }
-
-    setBoundingBox(boundingMin, boundingMax) {
-        this.boundingMin.set(boundingMin);
-        this.boundingMax.set(boundingMax);
-    }
-
-    addPhysicsObject(physicsObject) {
-        this.physicsObjects.push(physicsObject);
-    }
-
+class RigidbodyPhysicsWorld2D extends PhysicsWorld2D {
     tick() {
         this.tickPhysicsObjects();
 
@@ -1980,29 +2247,36 @@ class RigidbodyPhysicsWorld2D {
     }
 
     tickPhysicsObjects() {
-        let boundingMin = this.boundingMin;
-        let boundingMax = this.boundingMax;
         let gravity = this.gravity;
+        let reboundDampening = this.reboundDampening;
         let useBounding = this.useBounding;
         let physicsObjects = this.physicsObjects;
+        let velocityMax = this.velocityMax;
 
-        let bMinX = boundingMin.x;
-        let bMinY = boundingMin.y;
-        let bMaxX = boundingMax.x;
-        let bMaxY = boundingMax.y;
+        let topRight = this.boundingMax;
+        let bottomLeft = this.boundingMin;
+
+        let bMinX = bottomLeft.x;
+        let bMinY = bottomLeft.y;
+        let bMaxX = topRight.x;
+        let bMaxY = topRight.y;
 
         for (let pO = 0; pO < physicsObjects.length; pO++) {
             let physicsObject = physicsObjects[pO];
             let particle = physicsObject.particle;
 
             particle.force(gravity);
-            particle.tick();
+            particle.tick(velocityMax);
 
             if (useBounding) {
-                let bounded = false;
-
+                let prevPosition = particle.prevPosition;
                 let position = particle.position;
                 let type = physicsObject.type;
+
+                let pX = position.x;
+                let pY = position.y;
+
+                let reboundVector;
 
                 let sizeX;
                 let sizeY;
@@ -2015,55 +2289,25 @@ class RigidbodyPhysicsWorld2D {
                     sizeY = physicsObject.radius;
                 }
 
-                let pX = position.x;
-                let pY = position.y;
-    
                 if (pX < bMinX + sizeX) {
                     position.x = bMinX + sizeX;
-                    bounded = true;
+                    reboundVector = Vector2.right();
                 } else if (pX > bMaxX - sizeX) {
                     position.x = bMaxX - sizeX;
-                    bounded = true;
+                    reboundVector = Vector2.right();
                 }
                 if (pY < bMinY + sizeY) {
                     position.y = bMinY + sizeY;
-                    bounded = true;
+                    reboundVector = Vector2.positive();
                 } else if (pY > bMaxY - sizeY) {
                     position.y = bMaxY - sizeY;
-                    bounded = true;
+                    reboundVector = Vector2.positive();
                 }
-
-                if (bounded) {   
-                    particle.setCollided();
-                }
-            }
-        }
-    }
-
-    calculatePhysicsCollisions() {
-        let collisionDampening = this.collisionDampening;
-        let collisionDetector = new CollisionDetector2D();
-        let physicsObjects = this.physicsObjects;
-     
-        for (let p = 0; p < physicsObjects.length; p++) {
-            let sel1 = physicsObjects[p];
-            let collider1 = sel1.collider;
-
-            for (let p1 = 0; p1 < physicsObjects.length; p1++) {
-                if (p == p1) {
-                    continue;
-                }
-
-                let sel2 = physicsObjects[p1];
-                let collider2 = sel2.collider;
-
-                let doesCollide = collisionDetector.collision(collider1, collider2);
-
-                if (doesCollide) {
-                    let distance = collider1.position.difference(collider2.position).scaled(collisionDampening / doesCollide);
-
-                    sel1.particle.force(distance);
-                    sel2.particle.force(distance.scaled(-1));
+    
+                if (reboundVector) {
+                    let velocity = reboundVector.product(position.difference(prevPosition)).scaled(reboundDampening);
+                    velocity.capNum(velocityMax);
+                    physicsObject.applyForce(velocity);
                 }
             }
         }
@@ -2076,17 +2320,43 @@ class RigidbodyPhysicsWorld2D {
     printPhysicsObjects(ctx) {
         let physicsObjects = this.physicsObjects;
 
+        let r1 = 255;
+        let g1 = 255;
+        let b1 = 255;
+        let r2 = 50;
+        let g2 = 50;
+        let b2 = 255;
+
+        let rDiff = (r2 - r1);
+        let gDiff = (g2 - g1);
+        let bDiff = (b2 - b1);
+
         for (let pO = 0; pO < physicsObjects.length; pO++) {
             let physicsObject = physicsObjects[pO];
             let type = physicsObject.type;
-            let position = physicsObject.particle.position;
+            let position = physicsObject.position;
 
-            if (type == 0) {
-                ctx.strokeRect(position.x, position.y, physicsObject.width, physicsObject.height)
-            } else if (type == 1) {
-                ctx.beginPath();
-                ctx.arc(position.x, position.y, physicsObject.radius, 0, Math.PI * 2, false);
-                ctx.stroke();
+            let density = physicsObject.density;
+
+            let percent = density / 10;
+
+            let r = r1 + rDiff * percent;
+            let g = g1 + gDiff * percent;
+            let b = b1 + bDiff * percent;
+
+            ctx.strokeStyle = `rgb(${r},${g},${b})`;
+
+            switch (type) {
+                case 0: {
+                    let width = physicsObject.width;
+                    let height = physicsObject.height;
+                    ctx.strokeRect(position.x, position.y, width, height);
+                }
+                case 1: {
+                    ctx.beginPath();
+                    ctx.arc(position.x, position.y, physicsObject.radius, 0, Math.PI * 2, false);
+                    ctx.stroke();
+                }
             }
         }
     }

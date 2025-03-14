@@ -21,48 +21,154 @@
         let canvas = document.getElementById('canvas');
         let ctx = canvas.getContext('2d');
 
-        let numCircles = 500;
+        let numCircles = 800;
         let numRectangles = 0;
         
-        let length = 15;
-        let force = 0.75;
+        let length = 6;
+        let force = 0.2;
         let gravity = new Vector2(0, 0.1);
         let collisionDampening = 1;
         let collisionPadding = 0;
+        let reboundDampening = 0.4;
+        let friction = 0.95;
+        let velocityMax = 5;
+        let densitySamplingRadius = 30;
 
         let boundingMin = new Vector2(0, 0);
         let boundingMax = new Vector2(0, 0);
 
-        let isRigid = true;
+        let grid = [];
+        let points = [];
+        let sticks = [];
+
+        let smallBounds = false;
+        let simulationType = 0;
 
         let interval;
         let physicsWorld;
+
+        let defaultOrientation;
 
         function randomWithinBounds() {
             return new Vector2(Math.random() * (boundingMax.x - boundingMin.x) + boundingMin.x, Math.random() * (boundingMax.y - boundingMin.y) + boundingMin.y);
         }
 
+        function setListeners() {
+            return;
+
+            if (window.DeviceOrientationEvent) {
+                window.addEventListener('deviceorientation',
+                    deviceorientation, true);
+            }
+        }
+
+        function deviceorientation(event) {
+            let deg1 = event.beta * (Math.PI / 180);
+
+            var acc = {
+                x: -Math.sin(deg1),
+                y: Math.cos(deg1),
+            };
+
+            gravity.x = acc.x * 0.1;
+            gravity.y = acc.y * 0.1;
+        }
+
+        function addStickFromIndices(x1, y1, x2, y2, length) {
+            let p1 = grid[x1][y1];
+            let p2 = grid[x2][y2];
+
+            let newStick = new ParticleLooseConnection2D(p1, p2, length);
+
+            sticks.push(newStick);
+        }
+
         function onload() {
+            setListeners();
+            start();
+        }
+
+        function start() {
             canvas.width = canvas.clientWidth;
             canvas.height = canvas.clientHeight;
 
+            if (canvas.width > 1000) {
+                smallBounds = true;
+            }
+
             let objects = [];
 
-            boundingMin.set(new Vector2(canvas.width / 4, canvas.height / 4));
-            boundingMax.set(new Vector2(canvas.width / 4 * 3, canvas.height / 4 * 3));
+            if (smallBounds) {
+                boundingMin.set(new Vector2(canvas.width / 4, canvas.height / 4));
+                boundingMax.set(new Vector2(canvas.width / 4 * 3, canvas.height / 4 * 3));
+            } else {
+                boundingMin.set(new Vector2(0, 0));
+                boundingMax.set(new Vector2(canvas.width, canvas.height));
+            }
 
-            if (isRigid) {
+            if (simulationType == 0) {
                 physicsWorld = new RigidbodyPhysicsWorld2D();
 
                 for (let i = 0; i < numCircles; i++) {
-                    objects.push(new CircleRigidbodyPhysicsObject2D(randomWithinBounds(), length, collisionPadding));
+                    let size = Math.random() * length / 2 + length / 2;
+                    objects.push(new CircleRigidbodyPhysicsObject2D(randomWithinBounds(), size, collisionPadding));
                 }
 
                 for (let i = 0; i < numRectangles; i++) {
-                    objects.push(new RectangleRigidbodyPhysicsObject2D(randomWithinBounds(), length, length, collisionPadding));
+                    let size = length;
+                    objects.push(new RectangleRigidbodyPhysicsObject2D(randomWithinBounds(), size, size, collisionPadding));
                 }
-            } else {
+            } else if (simulationType == 1) {
                 physicsWorld = new SoftbodyPhysicsWorld2D();
+
+                for (let i = 0; i < numCircles; i++) {
+                    objects.push(new CircleSoftbodyPhysicsObject2D(randomWithinBounds(), force, length / 2, collisionPadding, 5));
+                }
+
+                for (let i = 0; i < numRectangles; i++) {
+                    objects.push(new RectangleSoftbodyPhysicsObject2D(randomWithinBounds(), force, length, length, collisionPadding));
+                }
+            } else if (simulationType == 2) {
+                physicsWorld = new SoftbodyPhysicsWorld2D();
+
+                let gridWidth = 101;
+                let gridHeight = 100;
+
+                let centerX = gridWidth / -2;
+                let centerY = gridHeight / -2;
+
+                let lockedFrequency = 10;
+                let stickLength = 7;
+
+                for (let x = 0; x < gridWidth; x++) {
+                    grid[x] = [];
+
+                    for (let y = 0; y < gridHeight; y++) {
+                        let newPoint = new Particle2D(new Vector2(canvas.width / 2 + (centerX + x) * stickLength, canvas.height / 2 + (centerY + y) * stickLength));
+
+                        grid[x][y] = newPoint;
+                        points.push(newPoint);
+                    }
+
+                    if (x % lockedFrequency == 0) {
+                        grid[x][0].lock();
+                    }
+                }
+
+                for (let x = 1; x < grid.length; x++) {
+                    addStickFromIndices(x, 0, x - 1, 0, stickLength);
+
+                    for (let y = 1; y < grid[x].length; y++) {
+                        addStickFromIndices(x, y, x - 1, y, stickLength);
+                        addStickFromIndices(x, y, x, y - 1, stickLength);
+
+                        if (x == 1) {
+                            addStickFromIndices(x - 1, y, x - 1, y - 1, stickLength)
+                        }
+                    }
+                }
+
+                objects.push(new MeshSoftbodyPhysicsObject2D(new Vector2(canvas.width / 2, canvas.height / 2), points, sticks, 0, 0, 0, 5, false));
 
                 for (let i = 0; i < numCircles; i++) {
                     objects.push(new CircleSoftbodyPhysicsObject2D(randomWithinBounds(), force, length / 2, collisionPadding));
@@ -71,29 +177,44 @@
                 for (let i = 0; i < numRectangles; i++) {
                     objects.push(new RectangleSoftbodyPhysicsObject2D(randomWithinBounds(), force, length, length, collisionPadding));
                 }
-
             }
-            
 
             for (let object of objects) {
                 physicsWorld.addPhysicsObject(object);
             }
-            
+
             physicsWorld.setGravity(gravity);
             physicsWorld.setCollisionDampening(collisionDampening);
+            physicsWorld.setReboundDampening(reboundDampening);
+            physicsWorld.setFriction(friction);
+            physicsWorld.setVelocityMax(velocityMax);
+            physicsWorld.setDensitySamplingRadius(densitySamplingRadius);
             physicsWorld.setBoundingBox(boundingMin, boundingMax);
+            physicsWorld.setQuadrantSize(50);
             physicsWorld.enableBounding();
             physicsWorld.enableCollisions();
             physicsWorld.setPrintParticleConnections(false);
-
-            ctx.strokeStyle = "white";
-            ctx.fillStyle = "white";
 
             tick(0);
         }
 
         function tick(t) {
+            physicsWorld.setGravity(gravity);
+
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = "white";
+            ctx.fillStyle = "white";
+
+            if (smallBounds) {
+                ctx.beginPath();
+                ctx.moveTo(boundingMin.x, boundingMin.y);
+                ctx.lineTo(boundingMin.x, boundingMax.y);
+                ctx.lineTo(boundingMax.x, boundingMax.y);
+                ctx.lineTo(boundingMax.x, boundingMin.y);
+                ctx.lineTo(boundingMin.x, boundingMin.y);
+                ctx.stroke();
+            }
 
             physicsWorld.tick();
             physicsWorld.printPhysicsObjects(ctx, 2);
