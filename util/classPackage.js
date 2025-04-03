@@ -1176,9 +1176,9 @@ class Vector3 {
     }
 
     rotateDeg(degs, origin) {
-        let rads = degs.scaled(Math.PI / 180)
+        let rads = degs.scaled(Math.PI / 180);
 
-        return this.rotateRad(rads, origin)
+        return this.rotateRad(rads, origin);
     }
 
     rotateRad(rads, origin) {

@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+    <style>
+        body {
+            margin: 0;
+            padding: none;
+            overflow-y: hidden;
+            background-color: black;
+        }
+    </style>
+</head>
+<body onload="onload()">
+    <canvas id="glcanvas" style="width: 100vw; height: 100vh;"></canvas>
+
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js"
+      integrity="sha512-zhHQR0/H5SEBL3Wn6yYSaTTZej12z0hVZKOv3TwCUXT1z5qeqGcXJLLrbERYRScEDDpYIJhPC1fk31gqR783iQ=="
+      crossorigin="anonymous"
+      defer
+    ></script>
+    <script src="../util/classPackage.js"></script>
+    <script src="../util/utilFunctions.js"></script>
+
+    <script>
+        let canvas;
+        let gl;
+
+        let loop;
+        let tickRate = 16;
+        let dt = 1;
+
+        let waveIterations = 5.0;
+
+        let sunPos = [0.0, 20.0, -10.0];
+
+        let data = {
+            wavelength: 2,
+            frequency: 1,
+            amplitude: 1,
+            speed: 0.05,
+            direction: 1,
+            time: 0,
+
+            amplitudeCoeff: 0.5,
+            frequencyCoeff: 1.2,
+
+            contrast: 0.4,
+            contrastPow: 0.3,
+            specularContrast: 0.01,
+            specular: 0.8,
+            ambient: 0.1,
+        };
+
+        const vs = `
+            precision highp float;
+
+            attribute vec4 aVertexPosition;
+            attribute vec4 aVertexColor;
+
+            uniform mat4 uModelViewMatrix;
+            uniform mat4 uProjectionMatrix;
+
+            uniform vec3 sunPos;
+
+            uniform float wavelength;
+            uniform float frequency;
+            uniform float amplitude;
+            uniform float speed;
+            uniform float direction;
+            uniform float time;
+
+            uniform float amplitudeCoeff;
+            uniform float frequencyCoeff;
+
+            varying highp vec4 vColor;
+            varying highp vec3 normal;
+
+            void main(void) {
+                vec4 position = vec4(aVertexPosition.xyzw);
+
+                float x = position.x;
+                float y = position.y;
+
+                const float iterations = ${parseInt(waveIterations)}.0;
+
+                float timeSpeed = time * speed;
+
+                float currAmplitude = amplitude;
+                float currFrequency = frequency;
+
+                float dirX = direction;
+                float dirY = direction;
+
+                float val = 0.0;
+                float partialDX = 0.0;
+                float partialDY = 0.0;
+
+                for (float i = 0.0; i < iterations; i += 1.0) {
+                    float xFreq = x * currFrequency - y / 10.0;
+                    float yFreq = y * currFrequency + x / 10.0;
+
+                    float xComp = dirX * xFreq + timeSpeed;
+                    float yComp = dirY * yFreq + timeSpeed;
+
+                    float exp1 = exp(sin(xComp) - 1.0);
+                    float exp2 = exp(sin(yComp) - 1.0);
+
+                    val += currAmplitude * (exp1 + exp2);
+
+                    partialDX += currFrequency * currAmplitude * dirX * exp1 * cos(xComp);
+                    partialDY += currFrequency * currAmplitude * dirY * exp2 * cos(yComp);
+
+                    currAmplitude *= amplitudeCoeff;
+                    currFrequency *= frequencyCoeff;
+                }
+
+                position.z += val;
+
+                vec3 tangent = vec3(0.0, 1.0, partialDX);
+                vec3 bitangent = vec3(1.0, 0.0, partialDY);
+
+                normal = normalize(cross(tangent, bitangent));
+
+                gl_Position = uProjectionMatrix * uModelViewMatrix * position;
+                vColor = aVertexColor;
+            }
+        `;
+
+        const fs = `
+            precision highp float;
+
+            uniform float contrast;
+            uniform float contrastPow;
+            uniform float specular;
+            uniform float specularContrast;
+            uniform float ambient;
+            
+            uniform vec3 sunPos;
+
+            varying highp vec4 vColor;
+            varying highp vec3 normal;
+
+            void main(void) {
+                vec3 originalPos = vec3(gl_FragCoord.xyz * gl_FragCoord.w);
+                vec3 viewVec = vec3(0.0, 0.0, 0.0) - originalPos;
+                vec3 sunVec = sunPos - vec3(originalPos.xyz);
+                vec3 halfway = viewVec + sunVec;
+
+                float diffuse = dot(normal, sunVec);
+                float specularHighlight = dot(halfway, normal);
+
+                if (diffuse < 0.0) {
+                    diffuse = 0.0;
+                }
+
+                float diffuseFinal = pow(1.0 + diffuse, contrastPow) * contrast;
+                float specularFinal = pow(specularHighlight, specular) * specularContrast;
+
+                float lighting = diffuseFinal + specularFinal + ambient;
+
+                gl_FragColor = vColor * lighting;
+            }
+        `;
+
+        let positionsMesh = [];
+        let colors = [];
+
+        function onload() {
+            try {
+                setup();
+                startLoop();
+            } catch (error) {
+                alert(error.stack);
+            }
+        }
+
+        function setup() {
+            canvas = document.getElementById('glcanvas');
+
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+
+            gl = canvas.getContext('webgl');
+
+            if (gl === null) {
+                throw new Error("Unable to initialize WebGL. Your browser or machine may not support it.");
+                return;
+            }
+
+            data.frequency /= data.wavelength;
+
+            let quads = 100;
+            let width = 100;
+            let height = 100;
+            let offsetX = 0;
+            let offsetY = 25;
+            let z = -10;
+
+            positionsMesh = createRectangleMesh(quads, width, height, offsetX, offsetY, z);
+
+            data.vertexCount = positionsMesh.length / 3;
+            colors = extendArray([0.0, 0.0, 0.52, 1.0], data.vertexCount * 4);
+        }
+
+        function startLoop() {
+            loop = setInterval(function() {
+                draw();
+            }, tickRate);
+        }
+
+        function draw() {
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            const shaderProgram = initShaderProgram(gl, vs, fs);
+
+            const programInfo = {
+                program: shaderProgram,
+
+                attribLocations: {
+                    vertexPosition: gl.getAttribLocation(shaderProgram, "aVertexPosition"),
+                    vertexColor: gl.getAttribLocation(shaderProgram, "aVertexColor"),
+                },
+
+                uniformLocations: {
+                    projectionMatrix: gl.getUniformLocation(
+                        shaderProgram,
+                        "uProjectionMatrix"
+                    ),
+                    modelViewMatrix: gl.getUniformLocation(shaderProgram, "uModelViewMatrix"),
+                },
+            };
+
+            const buffers = initBuffers(gl);
+
+            drawScene(gl, programInfo, shaderProgram, buffers);
+
+            data.time += dt;
+        }
+        
+        function initShaderProgram(gl, vs, fs) {
+            const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vs);
+            const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fs);
+
+            const shaderProgram = gl.createProgram();
+            gl.attachShader(shaderProgram, vertexShader);
+            gl.attachShader(shaderProgram, fragmentShader);
+            gl.linkProgram(shaderProgram);
+
+            if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+                alert(
+                `Unable to initialize the shader program: ${gl.getProgramInfoLog(
+                    shaderProgram
+                )}`
+                );
+                return null;
+            }
+
+            return shaderProgram;
+        }
+
+        function loadShader(gl, type, source) {
+            const shader = gl.createShader(type);
+
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                alert(
+                `An error occurred compiling the ${type} shader: ${gl.getShaderInfoLog(shader)}`
+                );
+                gl.deleteShader(shader);
+                return null;
+            }
+
+            return shader;
+        }
+
+        function drawScene(gl, programInfo, shaderProgram, buffers) {
+            gl.clearColor(0.0, 0.0, 0.0, 1.0); 
+            gl.clearDepth(1.0);
+            gl.enable(gl.DEPTH_TEST);
+            gl.depthFunc(gl.LEQUAL);
+
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+            const fieldOfView = (45 * Math.PI) / 180;
+            const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
+            const zNear = 0.1;
+            const zFar = 100.0;
+            const projectionMatrix = mat4.create();
+
+            mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
+
+            const modelViewMatrix = mat4.create();
+            
+            let rotation = -1.56;
+
+            mat4.translate(
+                modelViewMatrix,
+                modelViewMatrix,
+                [-0.0, 0.0, -6.0],
+            );
+
+            mat4.rotate(
+                modelViewMatrix,
+                modelViewMatrix,
+                rotation,
+                [1.0, 0, 0],
+            )
+
+            setPositionAttribute(gl, buffers, programInfo);
+            setColorAttribute(gl, buffers, programInfo);
+
+            gl.useProgram(programInfo.program);
+
+            gl.uniformMatrix4fv(
+                programInfo.uniformLocations.projectionMatrix,
+                false,
+                projectionMatrix
+            );
+            gl.uniformMatrix4fv(
+                programInfo.uniformLocations.modelViewMatrix,
+                false,
+                modelViewMatrix
+            );
+
+            let sunPosLoc = gl.getUniformLocation(shaderProgram, 'sunPos');
+            gl.uniform3fv(sunPosLoc, sunPos);
+
+            setUniforms(gl, shaderProgram, data);
+
+            const offset = 0;
+            gl.drawArrays(gl.TRIANGLES, offset, buffers.vertexCount);
+        }
+
+        function setPositionAttribute(gl, buffers, programInfo) {
+            const numComponents = 3;
+            const type = gl.FLOAT;
+            const normalize = false;
+            const stride = 0;
+            const offset = 0;
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
+            gl.vertexAttribPointer(
+                programInfo.attribLocations.vertexPosition,
+                numComponents,
+                type,
+                normalize,
+                stride,
+                offset
+            );
+            gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+        }
+        
+        function setColorAttribute(gl, buffers, programInfo) {
+            const numComponents = 4;
+            const type = gl.FLOAT;
+            const normalize = false;
+            const stride = 0;
+            const offset = 0;
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
+            gl.vertexAttribPointer(
+                programInfo.attribLocations.vertexColor,
+                numComponents,
+                type,
+                normalize,
+                stride,
+                offset
+            );
+
+            gl.enableVertexAttribArray(programInfo.attribLocations.vertexColor);
+        }
+
+        function initBuffers(gl) {
+            const positionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positionsMesh), gl.STATIC_DRAW);
+
+            const colorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+
+            return {
+                position: positionBuffer,
+                color: colorBuffer,
+                vertexCount: data.vertexCount,
+            };
+            }
+
+            function setUniforms(gl, shaderProgram, data) {
+            let dataKeys = Object.keys(data);
+
+            for (let i = 0; i < dataKeys.length; i++) {
+                let key = dataKeys[i];
+
+                const uniformLocation = gl.getUniformLocation(shaderProgram, key);
+                gl.uniform1f(uniformLocation, data[key]);
+            }
+        }
+
+        function createRectangleMesh(quads, width, height, offsetX, offsetY, z) {
+            let positions = [];
+
+            let startX = offsetX - width / 2;
+            let startY = offsetY - height / 2;
+
+            let stepX = width / quads;
+            let stepY = height / quads;
+
+            let halfStepX = stepX / 2;
+            let halfStepY = stepY / 2;
+
+            let sX1 = 1.0 
+            let sY1 = 1.0
+            let sX2 = -1.0;
+            let sY2 = 1.0;
+            let sX3 = 1.0;
+            let sY3 = -1.0;
+            let sX4 = -1.0;
+            let sY4 = -1.0;
+
+            let vertices = [];
+            let indices = []
+
+            for (let y = 0; y <= quads; y++) {
+                let v = startY + y * stepY;
+                for (let x = 0; x <= quads; x++) {
+                    let u = startX + x * stepX;
+                    vertices.push([u, v, z]);
+                }
+            }
+
+            let rowSize = (quads + 1);
+
+            for (let y = 0; y < quads; y++) {
+                let rowOffset0 = (y + 0) * rowSize;
+                let rowOffset1 = (y + 1) * rowSize;
+                
+                for (let x = 0; x < quads; x++) {
+                    let offset0 = rowOffset0 + x;
+                    let offset1 = rowOffset1 + x;
+
+                    indices.push(offset0, offset0 + 1, offset1);
+                    indices.push(offset1, offset0 + 1, offset1 + 1);
+                }
+            }
+
+            for (let i = 0; i < indices.length - 1; i++) {
+                let index = indices[i];
+                positions.push(vertices[index]);
+            }
+
+            return positions.flat();
+        }
+    </script>
+</body>
+</html>
