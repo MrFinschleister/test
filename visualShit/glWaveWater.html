@@ -25,6 +25,7 @@
     ></script>
     <script src="../util/classPackage.js"></script>
     <script src="../util/utilFunctions.js"></script>
+    <script src="./shaders.js"></script>
 
     <script>
         let canvas;
@@ -32,88 +33,144 @@
 
         let loop;
         let tickRate = 16;
-        let dt = 1;
+        let tickDt = 0.1;
+        let rotDt = 0.0001;
 
-        let waveIterations = 5.0;
+        let waveIterations = 10.0;
 
-        let sunPos = [0.0, 20.0, -10.0];
+        let sunDist = 500;
+        let sunPos = [0.0, 20.0, -100.0];
+        let sunColor = [0.95, 0.91, 0.6, 1.0];
+        let skyBright = [0.0, 0.25, 1.0, 1.0];
+        let skyDark = [0.1, 0.0, 0.2, 1.0];
+        let directions = [];
+
+        let wavePositions = [];
+        let waveColors = [];
+        let waveTypes = [];
+
+        let cubePositions = [];
+        let cubeColors = [];
+        let cubeTypes = [];
+
+        let positionsMesh = [];
+        let colors = [];
+        let types = [];
+
+        let cubeWidth = 500;
+        let cubeHeight = 500;
+        let cubeDepth = 500;
 
         let data = {
             wavelength: 2,
             frequency: 1,
-            amplitude: 1,
-            speed: 0.05,
+            amplitude: 0.5,
+            speed: 0.5,
             direction: 1,
             time: 0,
 
-            amplitudeCoeff: 0.5,
-            frequencyCoeff: 1.2,
+            amplitudeCoeff: 0.6,
+            frequencyCoeff: 1.35,
 
             contrast: 0.4,
-            contrastPow: 0.3,
-            specularContrast: 0.01,
-            specular: 0.8,
-            ambient: 0.1,
+            contrastPow: 0.2,
+            specularContrast: 0.5,
+            specular: 2,
+            ambient: 0.0,
+
+            sunExp: 250.0,
+            sunThresh: 0.03,
+            sunIntensity: 1.0,
+            sunTheta: Math.PI / 2,
+            sunsetBias: 1.5,
         };
 
-        const vs = `
+        const waveVertexShader = `
             precision highp float;
 
             attribute vec4 aVertexPosition;
             attribute vec4 aVertexColor;
+            attribute float vertexType;
 
             uniform mat4 uModelViewMatrix;
             uniform mat4 uProjectionMatrix;
-
-            uniform vec3 sunPos;
 
             uniform float wavelength;
             uniform float frequency;
             uniform float amplitude;
             uniform float speed;
             uniform float direction;
+            uniform float directions[${waveIterations}];
             uniform float time;
 
             uniform float amplitudeCoeff;
             uniform float frequencyCoeff;
 
             varying highp vec4 vColor;
+            varying highp vec4 originalPosition;
             varying highp vec3 normal;
 
             void main(void) {
                 vec4 position = vec4(aVertexPosition.xyzw);
+                originalPosition = position;
+                
+                vec2 positionVec = vec2(position.xy);
+                float x = positionVec.x;
+                float y = positionVec.y;
 
-                float x = position.x;
-                float y = position.y;
-
-                const float iterations = ${parseInt(waveIterations)}.0;
+                const int iterations = ${waveIterations};
 
                 float timeSpeed = time * speed;
-
-                float currAmplitude = amplitude;
-                float currFrequency = frequency;
-
-                float dirX = direction;
-                float dirY = direction;
 
                 float val = 0.0;
                 float partialDX = 0.0;
                 float partialDY = 0.0;
 
-                for (float i = 0.0; i < iterations; i += 1.0) {
-                    float xFreq = x * currFrequency - y / 10.0;
-                    float yFreq = y * currFrequency + x / 10.0;
+                float dXPrev = 0.0;
+                float dYPrev = 0.0;
+                float timeSpeedPrev = timeSpeed - speed;
 
-                    float xComp = dirX * xFreq + timeSpeed;
-                    float yComp = dirY * yFreq + timeSpeed;
+                float currAmplitude = amplitude;
+                float currFrequency = frequency;
 
-                    float exp1 = exp(sin(xComp) - 1.0);
-                    float exp2 = exp(sin(yComp) - 1.0);
+                for (int i = 0; i < iterations; i++) {
+                    float currDirection = directions[i];
+                    vec2 currDirectionVec = vec2(-1.0 * cos(currDirection), sin(currDirection));
+                    float dotProd = dot(currDirectionVec, positionVec);
 
-                    val += currAmplitude * (exp1 + exp2);
+                    float comp = dotProd * currFrequency + timeSpeedPrev;
 
-                    partialDX += currFrequency * currAmplitude * dirX * exp1 * cos(xComp);
-                    partialDY += currFrequency * currAmplitude * dirY * exp2 * cos(yComp);
+                    float sinVal = sin(comp);
+                    float cosVal = cos(comp);
+
+                    x += currDirectionVec.x * currFrequency * currAmplitude * exp(sinVal - 1.0) * cosVal;
+                    y += currDirectionVec.y * currFrequency * currAmplitude * exp(sinVal - 1.0) * cosVal;
+
+                    currAmplitude *= amplitudeCoeff;
+                    currFrequency *= frequencyCoeff;
+                }
+
+                positionVec = vec2(x, y);
+
+                currAmplitude = amplitude;
+                currFrequency = frequency;
+
+                for (int i = 0; i < iterations; i++) {
+                    float currDirection = directions[i];
+                    vec2 currDirectionVec = vec2(-1.0 * cos(currDirection), sin(currDirection));
+                    float dotProd = dot(currDirectionVec, positionVec);
+
+                    float comp = dotProd * currFrequency + timeSpeed;
+                
+                    float sinVal = sin(comp);
+                    float cosVal = cos(comp);
+
+                    val += currAmplitude * exp(sinVal - 1.0);
+
+                    partialDX += currDirectionVec.x * currFrequency * currAmplitude * exp(sinVal - 1.0) * cosVal;
+                    partialDY += currDirectionVec.y * currFrequency * currAmplitude * exp(sinVal - 1.0) * cosVal;
+                    partialDX += currDirectionVec.x * currFrequency * currAmplitude * exp(sinVal - 1.0) * cosVal;
+                    partialDY += currDirectionVec.y * currFrequency * currAmplitude * exp(sinVal - 1.0) * cosVal;
 
                     currAmplitude *= amplitudeCoeff;
                     currFrequency *= frequencyCoeff;
@@ -131,7 +188,7 @@
             }
         `;
 
-        const fs = `
+        const waveFragmentShader = `
             precision highp float;
 
             uniform float contrast;
@@ -141,15 +198,20 @@
             uniform float ambient;
             
             uniform vec3 sunPos;
+            uniform vec4 sunColor;
+            uniform vec4 skyBright;
+            uniform vec4 skyDark;
 
             varying highp vec4 vColor;
+            varying highp vec4 originalPosition;
             varying highp vec3 normal;
 
             void main(void) {
-                vec3 originalPos = vec3(gl_FragCoord.xyz * gl_FragCoord.w);
-                vec3 viewVec = vec3(0.0, 0.0, 0.0) - originalPos;
-                vec3 sunVec = sunPos - vec3(originalPos.xyz);
-                vec3 halfway = viewVec + sunVec;
+                vec3 originalPos = vec3(originalPosition.xyz);
+
+                vec3 viewVec = normalize(vec3(0.0, 0.0, 0.0) - originalPos);
+                vec3 sunVec = normalize(sunPos - originalPos);
+                vec3 halfway = normalize(viewVec + sunVec);
 
                 float diffuse = dot(normal, sunVec);
                 float specularHighlight = dot(halfway, normal);
@@ -163,12 +225,68 @@
 
                 float lighting = diffuseFinal + specularFinal + ambient;
 
-                gl_FragColor = vColor * lighting;
+                gl_FragColor = vColor * lighting + specularFinal * sunColor;
             }
         `;
 
-        let positionsMesh = [];
-        let colors = [];
+        const cubeVertexShader = `
+            precision highp float;
+
+            attribute vec4 aVertexPosition;
+            attribute vec4 aVertexColor;
+            attribute float vertexType;
+
+            uniform mat4 uModelViewMatrix;
+            uniform mat4 uProjectionMatrix;
+
+            varying highp vec4 vColor;
+            varying highp vec4 originalPosition;
+
+            void main(void) {
+                vec4 color = aVertexColor;
+
+                gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
+
+                originalPosition = aVertexPosition;
+                vColor = color;
+            }
+        `;
+
+        const cubeFragmentShader = `
+            precision highp float;
+
+            varying highp vec4 vColor;
+            varying highp vec4 originalPosition;
+            
+            uniform vec3 sunPos;
+            uniform vec3 sunPosNormal;
+            uniform vec4 sunColor;
+            uniform vec4 skyBright;
+            uniform vec4 skyDark;
+
+            uniform float sunExp;
+            uniform float sunThresh;
+            uniform float sunIntensity;
+            uniform float sunTheta;
+            uniform float sunsetBias;
+
+            void main(void) {
+                vec4 color = vColor;
+
+                float sunDot = dot(normalize(originalPosition.xyz), sunPosNormal);
+                float val = pow(sunDot, sunExp);
+
+                float thetaDiff = cos(sunTheta + 4.71) / 2.0;
+                color *= thetaDiff;
+
+                color += thetaDiff * skyBright;
+                color += (1.0 - thetaDiff) * skyDark;
+
+                color += sunColor * val * sunIntensity;
+ 
+                gl_FragColor = color;
+            }
+        `
 
         function onload() {
             try {
@@ -194,56 +312,103 @@
 
             data.frequency /= data.wavelength;
 
-            let quads = 100;
-            let width = 100;
-            let height = 100;
+            sunPos[2] = cubeDepth / -2;
+
+            let quads = 200;
+            let gridWidth = 200;
+            let gridHeight = 100;
             let offsetX = 0;
             let offsetY = 25;
-            let z = -10;
+            let offsetZ = -10;
 
-            positionsMesh = createRectangleMesh(quads, width, height, offsetX, offsetY, z);
+            for (let i = 0; i < waveIterations; i++) {
+                directions.push(Math.random() * Math.PI * 2); 
+            }
 
-            data.vertexCount = positionsMesh.length / 3;
-            colors = extendArray([0.0, 0.0, 0.52, 1.0], data.vertexCount * 4);
+            let waveMesh = createRectangleMesh(quads, gridWidth, gridHeight, offsetX, offsetY, offsetZ);
+            let cubeMesh = createCubeMesh(cubeWidth, cubeHeight, cubeDepth, 0, 0, 0);
+
+            for (let i = 0; i < waveMesh.length; i += 3) {
+                wavePositions.push(waveMesh[i], waveMesh[i + 1], waveMesh[i + 2]);
+                waveColors.push(0.0, 0.32, 0.46, 1.0);
+                waveTypes.push(0.0);
+            }
+
+            for (let i = 0; i < cubeMesh.length; i += 3) {
+                cubePositions.push(cubeMesh[i], cubeMesh[i + 1], cubeMesh[i + 2]);
+                cubeColors.push(0.44, 0.8, 0.92, 1.0);
+                cubeTypes.push(1.0);
+            }
+
+            data.waveCount = waveMesh.length / 3;
+            data.cubeCount = cubeMesh.length / 3;
         }
 
         function startLoop() {
             loop = setInterval(function() {
-                draw();
+                data.sunTheta += rotDt;
+                data.sunTheta %= Math.PI * 2;
+
+                sunPos[0] = -Math.cos(data.sunTheta) * sunDist;
+                sunPos[1] = +Math.sin(data.sunTheta) * sunDist;
+
+                draw(gl);
+
+                data.time += tickDt;
             }, tickRate);
         }
 
-        function draw() {
-            gl.clearColor(0.0, 0.0, 0.0, 1.0);
-            gl.clear(gl.COLOR_BUFFER_BIT);
+        function draw(gl) {
+            gl.clearColor(0.0, 0.0, 0.0, 1.0); 
+            gl.clearDepth(1.0);
+            gl.enable(gl.DEPTH_TEST);
+            gl.depthFunc(gl.LEQUAL);
 
-            const shaderProgram = initShaderProgram(gl, vs, fs);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-            const programInfo = {
-                program: shaderProgram,
+            const fieldOfViewWave = Math.PI / 4;
+            const fieldOfViewCube = Math.PI / 2;
+            const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
 
-                attribLocations: {
-                    vertexPosition: gl.getAttribLocation(shaderProgram, "aVertexPosition"),
-                    vertexColor: gl.getAttribLocation(shaderProgram, "aVertexColor"),
-                },
+            const zNearWave = 0.1;
+            const zFarWave = 100.0;
 
-                uniformLocations: {
-                    projectionMatrix: gl.getUniformLocation(
-                        shaderProgram,
-                        "uProjectionMatrix"
-                    ),
-                    modelViewMatrix: gl.getUniformLocation(shaderProgram, "uModelViewMatrix"),
-                },
-            };
+            const zNearCube = 0.1;
+            const zFarCube = cubeDepth;
 
-            const buffers = initBuffers(gl);
+            const projectionMatrixWave = mat4.create();
+            const projectionMatrixCube = mat4.create();
 
-            drawScene(gl, programInfo, shaderProgram, buffers);
+            mat4.perspective(projectionMatrixWave, fieldOfViewWave, aspect, zNearWave, zFarWave);
+            mat4.perspective(projectionMatrixCube, fieldOfViewCube, aspect, zNearCube, zFarCube);
 
-            data.time += dt;
+            const modelViewMatrixWave = mat4.create();
+            const modelViewMatrixCube = mat4.create();
+            
+            let rotationWaveX = -1.56;
+            let rotationWaveY = 0;
+            let rotationWaveZ = 0;
+            mat4.translate(modelViewMatrixWave, modelViewMatrixWave,[-0.0, 0.0, 0.0]);
+            mat4.rotate(modelViewMatrixWave, modelViewMatrixWave, rotationWaveX, [1.0, 0, 0]);
+
+            let rotationCubeX = 0;
+            let rotationCubeY = 0;
+            let rotationCubeZ = 0;
+            mat4.translate(modelViewMatrixCube, modelViewMatrixCube,[-0.0, 0.0, -0.0]);
+            mat4.rotate(modelViewMatrixCube, modelViewMatrixCube, rotationCubeX, [1.0, 0, 0]);
+
+            const waveBuffers = initBuffers(gl, wavePositions, waveColors, waveTypes);
+            const waveProgram = constructFullShaderProgram(gl, waveVertexShader, waveFragmentShader);
+            finaliseProgram(waveProgram, waveBuffers, projectionMatrixWave, modelViewMatrixWave);
+            gl.drawArrays(gl.TRIANGLES, 0, waveBuffers.vertexCount);
+
+            const cubeBuffers = initBuffers(gl, cubePositions, cubeColors, cubeTypes);
+            const cubeProgram = constructFullShaderProgram(gl, cubeVertexShader, cubeFragmentShader);
+            finaliseProgram(cubeProgram, cubeBuffers, projectionMatrixCube, modelViewMatrixCube)
+            gl.drawArrays(gl.TRIANGLES, 0, cubeBuffers.vertexCount);
         }
-        
-        function initShaderProgram(gl, vs, fs) {
+
+        function constructFullShaderProgram(gl, vs, fs) {
             const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vs);
             const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fs);
 
@@ -261,7 +426,25 @@
                 return null;
             }
 
-            return shaderProgram;
+            const programInfo = {
+                program: shaderProgram,
+
+                attribLocations: {
+                    vertexPosition: gl.getAttribLocation(shaderProgram, "aVertexPosition"),
+                    vertexColor: gl.getAttribLocation(shaderProgram, "aVertexColor"),
+                    vertexType: gl.getAttribLocation(shaderProgram, "aVertexType"),
+                },
+
+                uniformLocations: {
+                    projectionMatrix: gl.getUniformLocation(
+                        shaderProgram,
+                        "uProjectionMatrix"
+                    ),
+                    modelViewMatrix: gl.getUniformLocation(shaderProgram, "uModelViewMatrix"),
+                },
+            };
+
+            return programInfo;
         }
 
         function loadShader(gl, type, source) {
@@ -281,62 +464,14 @@
             return shader;
         }
 
-        function drawScene(gl, programInfo, shaderProgram, buffers) {
-            gl.clearColor(0.0, 0.0, 0.0, 1.0); 
-            gl.clearDepth(1.0);
-            gl.enable(gl.DEPTH_TEST);
-            gl.depthFunc(gl.LEQUAL);
-
-            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-            const fieldOfView = (45 * Math.PI) / 180;
-            const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
-            const zNear = 0.1;
-            const zFar = 100.0;
-            const projectionMatrix = mat4.create();
-
-            mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
-
-            const modelViewMatrix = mat4.create();
-            
-            let rotation = -1.56;
-
-            mat4.translate(
-                modelViewMatrix,
-                modelViewMatrix,
-                [-0.0, 0.0, -6.0],
-            );
-
-            mat4.rotate(
-                modelViewMatrix,
-                modelViewMatrix,
-                rotation,
-                [1.0, 0, 0],
-            )
-
+        function finaliseProgram(programInfo, buffers, projectionMatrix, modelViewMatrix) {
             setPositionAttribute(gl, buffers, programInfo);
             setColorAttribute(gl, buffers, programInfo);
+            setTypeAttribute(gl, buffers, programInfo);
 
             gl.useProgram(programInfo.program);
 
-            gl.uniformMatrix4fv(
-                programInfo.uniformLocations.projectionMatrix,
-                false,
-                projectionMatrix
-            );
-            gl.uniformMatrix4fv(
-                programInfo.uniformLocations.modelViewMatrix,
-                false,
-                modelViewMatrix
-            );
-
-            let sunPosLoc = gl.getUniformLocation(shaderProgram, 'sunPos');
-            gl.uniform3fv(sunPosLoc, sunPos);
-
-            setUniforms(gl, shaderProgram, data);
-
-            const offset = 0;
-            gl.drawArrays(gl.TRIANGLES, offset, buffers.vertexCount);
+            setUniforms(gl, programInfo, programInfo.program, data, projectionMatrix, modelViewMatrix);
         }
 
         function setPositionAttribute(gl, buffers, programInfo) {
@@ -378,31 +513,75 @@
             gl.enableVertexAttribArray(programInfo.attribLocations.vertexColor);
         }
 
-        function initBuffers(gl) {
+        function setTypeAttribute(gl, buffers, programInfo) {
+            const numComponents = 1;
+            const type = gl.FLOAT;
+            const normalize = false;
+            const stride = 0;
+            const offset = 0;
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.type);
+            gl.vertexAttribPointer(
+                programInfo.attribLocations.vertexType,
+                numComponents,
+                type,
+                normalize,
+                stride,
+                offset
+            );
+
+            gl.enableVertexAttribArray(programInfo.attribLocations.vertexType);
+        }
+
+        function initBuffers(gl, positions, colors, types) {
             const positionBuffer = gl.createBuffer();
             gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positionsMesh), gl.STATIC_DRAW);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
 
             const colorBuffer = gl.createBuffer();
             gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
             gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
 
+            const typeBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, typeBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(types), gl.STATIC_DRAW);
+
             return {
                 position: positionBuffer,
                 color: colorBuffer,
-                vertexCount: data.vertexCount,
+                type: typeBuffer,
+                vertexCount: positions.length / 3,
             };
-            }
+        }
 
-            function setUniforms(gl, shaderProgram, data) {
-            let dataKeys = Object.keys(data);
+        function setUniforms(gl, programInfo, shaderProgram, data, projectionMatrix, modelViewMatrix) {
+            gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
+            gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, modelViewMatrix);
+            
+            let sunPosMag = Math.sqrt(sunPos[0] ** 2 + sunPos[1] ** 2 + sunPos[2] ** 2);
 
-            for (let i = 0; i < dataKeys.length; i++) {
-                let key = dataKeys[i];
+            let sunPosLoc = gl.getUniformLocation(shaderProgram, 'sunPos');
+            gl.uniform3fv(sunPosLoc, sunPos);
 
+            let sunPosNormalLoc = gl.getUniformLocation(shaderProgram, 'sunPosNormal');
+            gl.uniform3fv(sunPosNormalLoc, sunPos.map(a => a / sunPosMag));
+
+            let sunColorLoc = gl.getUniformLocation(shaderProgram, 'sunColor');
+            gl.uniform4fv(sunColorLoc, sunColor);
+
+            let skyBrightLoc = gl.getUniformLocation(shaderProgram, 'skyBright');
+            gl.uniform4fv(skyBrightLoc, skyBright);
+
+            let skyDarkLoc = gl.getUniformLocation(shaderProgram, 'skyDark');
+            gl.uniform4fv(skyDarkLoc, skyDark);
+
+            let directionsLoc = gl.getUniformLocation(shaderProgram, 'directions');
+            gl.uniform1fv(directionsLoc, new Float32Array(directions));
+
+            Object.keys(data).forEach((key) => {
                 const uniformLocation = gl.getUniformLocation(shaderProgram, key);
                 gl.uniform1f(uniformLocation, data[key]);
-            }
+            });
         }
 
         function createRectangleMesh(quads, width, height, offsetX, offsetY, z) {
@@ -459,6 +638,84 @@
 
             return positions.flat();
         }
+
+        function createCubeMesh(width, height, depth, centerX, centerY, centerZ) {
+            let positions = [];
+
+            let vertices = [
+                // Front face
+                -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, 1.0,
+
+                // Back face
+                -1.0, -1.0, -1.0, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0,
+
+                // Top face
+                -1.0, 1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0,
+
+                // Bottom face
+                -1.0, -1.0, -1.0, 1.0, -1.0, -1.0, 1.0, -1.0, 1.0, -1.0, -1.0, 1.0,
+
+                // Right face
+                1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0,
+
+                // Left face
+                -1.0, -1.0, -1.0, -1.0, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0, -1.0,
+            ];
+
+            let indices = [
+                0,
+                1,
+                2,
+                0,
+                2,
+                3, // front
+                4,
+                5,
+                6,
+                4,
+                6,
+                7, // back
+                8,
+                9,
+                10,
+                8,
+                10,
+                11, // top
+                12,
+                13,
+                14,
+                12,
+                14,
+                15, // bottom
+                16,
+                17,
+                18,
+                16,
+                18,
+                19, // right
+                20,
+                21,
+                22,
+                20,
+                22,
+                23, // left
+            ];
+
+            for (let i = 0; i < indices.length; i++) {
+                let index = indices[i] * 3;
+                
+                let x = vertices[index + 0] * width + centerX;
+                let y = vertices[index + 1] * height + centerY;
+                let z = vertices[index + 2] * depth + centerZ;
+
+                positions.push(x, y, z);
+            }
+
+            return positions;
+        }
+    
+        document.body.addEventListener('mousedown', (e) => {rotDt *= 100 * (e.ctrlKey ? -1 : 1)});
+        document.body.addEventListener('mouseup', (e) => {rotDt /= 100 * (rotDt < 0 ? -1 : 1)});
     </script>
 </body>
 </html>
