@@ -25,7 +25,7 @@
     ></script>
     <script src="../util/classPackage.js"></script>
     <script src="../util/utilFunctions.js"></script>
-    <script src="./shaders.js"></script>
+    <script src="./glFunctions.js"></script>
 
     <script>
         let canvas;
@@ -38,8 +38,13 @@
 
         let waveIterations = 10.0;
 
-        let sunDist = 500;
-        let sunPos = [0.0, 20.0, -100.0];
+        let cubeWidth = 500;
+        let cubeHeight = 500;
+        let cubeDepth = 500;
+
+        let sunDist = cubeHeight;
+        let sunPos = [0.0, 0.0, -cubeDepth];
+        let horizonPos = [0.0, 0.0, -cubeDepth];
         let sunColor = [0.95, 0.91, 0.6, 1.0];
         let skyBright = [0.0, 0.25, 1.0, 1.0];
         let skyDark = [0.1, 0.0, 0.2, 1.0];
@@ -57,10 +62,6 @@
         let colors = [];
         let types = [];
 
-        let cubeWidth = 500;
-        let cubeHeight = 500;
-        let cubeDepth = 500;
-
         let data = {
             wavelength: 2,
             frequency: 1,
@@ -69,13 +70,13 @@
             direction: 1,
             time: 0,
 
-            amplitudeCoeff: 0.6,
+            amplitudeCoeff: 0.5,
             frequencyCoeff: 1.35,
 
-            contrast: 0.4,
-            contrastPow: 0.2,
+            contrast: 0.75,
+            contrastPow: 0.3,
             specularContrast: 0.5,
-            specular: 2,
+            specular: 1.25,
             ambient: 0.0,
 
             sunExp: 250.0,
@@ -169,8 +170,6 @@
 
                     partialDX += currDirectionVec.x * currFrequency * currAmplitude * exp(sinVal - 1.0) * cosVal;
                     partialDY += currDirectionVec.y * currFrequency * currAmplitude * exp(sinVal - 1.0) * cosVal;
-                    partialDX += currDirectionVec.x * currFrequency * currAmplitude * exp(sinVal - 1.0) * cosVal;
-                    partialDY += currDirectionVec.y * currFrequency * currAmplitude * exp(sinVal - 1.0) * cosVal;
 
                     currAmplitude *= amplitudeCoeff;
                     currFrequency *= frequencyCoeff;
@@ -260,6 +259,9 @@
             
             uniform vec3 sunPos;
             uniform vec3 sunPosNormal;
+            uniform vec3 horizonPos;
+            uniform vec3 horizonPosNormal;
+
             uniform vec4 sunColor;
             uniform vec4 skyBright;
             uniform vec4 skyDark;
@@ -314,8 +316,8 @@
 
             sunPos[2] = cubeDepth / -2;
 
-            let quads = 200;
-            let gridWidth = 200;
+            let quads = 100;
+            let gridWidth = 100;
             let gridHeight = 100;
             let offsetX = 0;
             let offsetY = 25;
@@ -325,7 +327,7 @@
                 directions.push(Math.random() * Math.PI * 2); 
             }
 
-            let waveMesh = createRectangleMesh(quads, gridWidth, gridHeight, offsetX, offsetY, offsetZ);
+            let waveMesh = createRectangleMeshZ(quads, gridWidth, gridHeight, offsetX, offsetY, offsetZ);
             let cubeMesh = createCubeMesh(cubeWidth, cubeHeight, cubeDepth, 0, 0, 0);
 
             for (let i = 0; i < waveMesh.length; i += 3) {
@@ -408,163 +410,24 @@
             gl.drawArrays(gl.TRIANGLES, 0, cubeBuffers.vertexCount);
         }
 
-        function constructFullShaderProgram(gl, vs, fs) {
-            const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vs);
-            const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fs);
-
-            const shaderProgram = gl.createProgram();
-            gl.attachShader(shaderProgram, vertexShader);
-            gl.attachShader(shaderProgram, fragmentShader);
-            gl.linkProgram(shaderProgram);
-
-            if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-                alert(
-                `Unable to initialize the shader program: ${gl.getProgramInfoLog(
-                    shaderProgram
-                )}`
-                );
-                return null;
-            }
-
-            const programInfo = {
-                program: shaderProgram,
-
-                attribLocations: {
-                    vertexPosition: gl.getAttribLocation(shaderProgram, "aVertexPosition"),
-                    vertexColor: gl.getAttribLocation(shaderProgram, "aVertexColor"),
-                    vertexType: gl.getAttribLocation(shaderProgram, "aVertexType"),
-                },
-
-                uniformLocations: {
-                    projectionMatrix: gl.getUniformLocation(
-                        shaderProgram,
-                        "uProjectionMatrix"
-                    ),
-                    modelViewMatrix: gl.getUniformLocation(shaderProgram, "uModelViewMatrix"),
-                },
-            };
-
-            return programInfo;
-        }
-
-        function loadShader(gl, type, source) {
-            const shader = gl.createShader(type);
-
-            gl.shaderSource(shader, source);
-            gl.compileShader(shader);
-
-            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-                alert(
-                `An error occurred compiling the ${type} shader: ${gl.getShaderInfoLog(shader)}`
-                );
-                gl.deleteShader(shader);
-                return null;
-            }
-
-            return shader;
-        }
-
-        function finaliseProgram(programInfo, buffers, projectionMatrix, modelViewMatrix) {
-            setPositionAttribute(gl, buffers, programInfo);
-            setColorAttribute(gl, buffers, programInfo);
-            setTypeAttribute(gl, buffers, programInfo);
-
-            gl.useProgram(programInfo.program);
-
-            setUniforms(gl, programInfo, programInfo.program, data, projectionMatrix, modelViewMatrix);
-        }
-
-        function setPositionAttribute(gl, buffers, programInfo) {
-            const numComponents = 3;
-            const type = gl.FLOAT;
-            const normalize = false;
-            const stride = 0;
-            const offset = 0;
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
-            gl.vertexAttribPointer(
-                programInfo.attribLocations.vertexPosition,
-                numComponents,
-                type,
-                normalize,
-                stride,
-                offset
-            );
-            gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-        }
-        
-        function setColorAttribute(gl, buffers, programInfo) {
-            const numComponents = 4;
-            const type = gl.FLOAT;
-            const normalize = false;
-            const stride = 0;
-            const offset = 0;
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
-            gl.vertexAttribPointer(
-                programInfo.attribLocations.vertexColor,
-                numComponents,
-                type,
-                normalize,
-                stride,
-                offset
-            );
-
-            gl.enableVertexAttribArray(programInfo.attribLocations.vertexColor);
-        }
-
-        function setTypeAttribute(gl, buffers, programInfo) {
-            const numComponents = 1;
-            const type = gl.FLOAT;
-            const normalize = false;
-            const stride = 0;
-            const offset = 0;
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.type);
-            gl.vertexAttribPointer(
-                programInfo.attribLocations.vertexType,
-                numComponents,
-                type,
-                normalize,
-                stride,
-                offset
-            );
-
-            gl.enableVertexAttribArray(programInfo.attribLocations.vertexType);
-        }
-
-        function initBuffers(gl, positions, colors, types) {
-            const positionBuffer = gl.createBuffer();
-            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
-
-            const colorBuffer = gl.createBuffer();
-            gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-
-            const typeBuffer = gl.createBuffer();
-            gl.bindBuffer(gl.ARRAY_BUFFER, typeBuffer);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(types), gl.STATIC_DRAW);
-
-            return {
-                position: positionBuffer,
-                color: colorBuffer,
-                type: typeBuffer,
-                vertexCount: positions.length / 3,
-            };
-        }
-
         function setUniforms(gl, programInfo, shaderProgram, data, projectionMatrix, modelViewMatrix) {
             gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
             gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, modelViewMatrix);
             
             let sunPosMag = Math.sqrt(sunPos[0] ** 2 + sunPos[1] ** 2 + sunPos[2] ** 2);
+            let horizonPosMag = Math.sqrt(horizonPos[0] ** 2 + horizonPos[1] ** 2 + horizonPos[2] ** 2);
 
             let sunPosLoc = gl.getUniformLocation(shaderProgram, 'sunPos');
             gl.uniform3fv(sunPosLoc, sunPos);
 
             let sunPosNormalLoc = gl.getUniformLocation(shaderProgram, 'sunPosNormal');
             gl.uniform3fv(sunPosNormalLoc, sunPos.map(a => a / sunPosMag));
+
+            let horizonPosLoc = gl.getUniformLocation(shaderProgram, 'horizonPos');
+            gl.uniform3fv(horizonPosLoc, horizonPos);
+
+            let horizonPosNormalLoc = gl.getUniformLocation(shaderProgram, 'horizonPosNormal');
+            gl.uniform3fv(horizonPosLoc, horizonPos.map(a => a / horizonPosMag));
 
             let sunColorLoc = gl.getUniformLocation(shaderProgram, 'sunColor');
             gl.uniform4fv(sunColorLoc, sunColor);
@@ -582,136 +445,6 @@
                 const uniformLocation = gl.getUniformLocation(shaderProgram, key);
                 gl.uniform1f(uniformLocation, data[key]);
             });
-        }
-
-        function createRectangleMesh(quads, width, height, offsetX, offsetY, z) {
-            let positions = [];
-
-            let startX = offsetX - width / 2;
-            let startY = offsetY - height / 2;
-
-            let stepX = width / quads;
-            let stepY = height / quads;
-
-            let halfStepX = stepX / 2;
-            let halfStepY = stepY / 2;
-
-            let sX1 = 1.0 
-            let sY1 = 1.0
-            let sX2 = -1.0;
-            let sY2 = 1.0;
-            let sX3 = 1.0;
-            let sY3 = -1.0;
-            let sX4 = -1.0;
-            let sY4 = -1.0;
-
-            let vertices = [];
-            let indices = []
-
-            for (let y = 0; y <= quads; y++) {
-                let v = startY + y * stepY;
-                for (let x = 0; x <= quads; x++) {
-                    let u = startX + x * stepX;
-                    vertices.push([u, v, z]);
-                }
-            }
-
-            let rowSize = (quads + 1);
-
-            for (let y = 0; y < quads; y++) {
-                let rowOffset0 = (y + 0) * rowSize;
-                let rowOffset1 = (y + 1) * rowSize;
-                
-                for (let x = 0; x < quads; x++) {
-                    let offset0 = rowOffset0 + x;
-                    let offset1 = rowOffset1 + x;
-
-                    indices.push(offset0, offset0 + 1, offset1);
-                    indices.push(offset1, offset0 + 1, offset1 + 1);
-                }
-            }
-
-            for (let i = 0; i < indices.length - 1; i++) {
-                let index = indices[i];
-                positions.push(vertices[index]);
-            }
-
-            return positions.flat();
-        }
-
-        function createCubeMesh(width, height, depth, centerX, centerY, centerZ) {
-            let positions = [];
-
-            let vertices = [
-                // Front face
-                -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, 1.0,
-
-                // Back face
-                -1.0, -1.0, -1.0, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0,
-
-                // Top face
-                -1.0, 1.0, -1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0,
-
-                // Bottom face
-                -1.0, -1.0, -1.0, 1.0, -1.0, -1.0, 1.0, -1.0, 1.0, -1.0, -1.0, 1.0,
-
-                // Right face
-                1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0,
-
-                // Left face
-                -1.0, -1.0, -1.0, -1.0, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0, -1.0,
-            ];
-
-            let indices = [
-                0,
-                1,
-                2,
-                0,
-                2,
-                3, // front
-                4,
-                5,
-                6,
-                4,
-                6,
-                7, // back
-                8,
-                9,
-                10,
-                8,
-                10,
-                11, // top
-                12,
-                13,
-                14,
-                12,
-                14,
-                15, // bottom
-                16,
-                17,
-                18,
-                16,
-                18,
-                19, // right
-                20,
-                21,
-                22,
-                20,
-                22,
-                23, // left
-            ];
-
-            for (let i = 0; i < indices.length; i++) {
-                let index = indices[i] * 3;
-                
-                let x = vertices[index + 0] * width + centerX;
-                let y = vertices[index + 1] * height + centerY;
-                let z = vertices[index + 2] * depth + centerZ;
-
-                positions.push(x, y, z);
-            }
-
-            return positions;
         }
     
         document.body.addEventListener('mousedown', (e) => {rotDt *= 100 * (e.ctrlKey ? -1 : 1)});

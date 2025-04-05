@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+    <style>
+        body {
+            margin: 0;
+            padding: none;
+            overflow-y: hidden;
+            background-color: black;
+        }
+    </style>
+</head>
+<body onload="onload()">
+    <canvas id="glcanvas" style="width: 100vw; height: 100vh;"></canvas>
+
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js"
+      integrity="sha512-zhHQR0/H5SEBL3Wn6yYSaTTZej12z0hVZKOv3TwCUXT1z5qeqGcXJLLrbERYRScEDDpYIJhPC1fk31gqR783iQ=="
+      crossorigin="anonymous"
+      defer
+    ></script>
+    <script src="../util/classPackage.js"></script>
+    <script src="../util/utilFunctions.js"></script>
+    <script src="./glFunctions.js"></script>
+
+    <script>
+        let canvas;
+        let gl;
+
+        let loop;
+        let tickRate = 16;
+        let dt = 0.1;
+
+        let numWaves = 5.0;
+
+        let cubeWidth = 500;
+        let cubeHeight = 500;
+        let cubeDepth = 500;
+
+        let skyDepth = 2000;
+
+        let sunPosition = [0.0, cubeHeight / 10, cubeDepth / -2];
+        let sunColor = [0.95, 0.91, 0.6, 1.0];
+        let skyBright = [0.0, 0.25, 1.0, 1.0];
+        let skyDark = [0.3, 0.3, 0.59, 1.0];
+        let directions = [];
+
+        let wavePositions = [];
+        let waveColors = [];
+
+        let skyPositions = [];
+        let skyColors = [];
+
+        let data = {
+            w: 1,
+            A: 0.5,
+            t: 0,
+            s: 0.5,
+            wCoeff: 1.35,
+            ACoeff: 0.5,
+
+            diffuseContrast: 2,
+            diffuseExponent: 0.2,
+            specularContrast: 5,
+            specularExponent: 3,
+            ambient: 0.2,
+
+            sunExponent: 250.0,
+            sunContrast: 100.0,
+            sunTheta: 0,
+            sunPhi: 0,
+            sunDistance: 250,
+            sunRadius: 5,
+            sunAtmosphereRadius: 5,
+
+            rotSpeedTheta: 0.01,
+            rotSpeedPhi: 0.1,
+        };
+
+        const waveVertexShader = `
+            precision highp float;
+
+            attribute vec4 aVertexPosition;
+            attribute vec4 aVertexColor;
+            
+            struct Wave {
+                vec4 position;
+                vec3 tangent;
+                vec3 binormal;
+            };
+
+            const int numWaves = ${numWaves};
+
+            uniform mat4 uModelViewMatrix;
+            uniform mat4 uProjectionMatrix;
+
+            uniform float w;
+            uniform float A;
+            uniform float t;
+            uniform float s;
+            uniform float wCoeff;
+            uniform float ACoeff;
+
+            uniform vec3 sunPosition;
+
+            uniform float directions[numWaves];
+
+            varying vec4 vColor;
+            varying vec3 vPosition;
+            varying vec3 vNormal;
+
+            Wave calculateFBM(vec4 position, float[numWaves] directions, float w, float wCoeff, float A, float aCoeff, float t, float s) {
+                vec2 posVec = vec2(position.xz);
+                
+                float timeSpeed = t * s;
+                float w1 = w;
+                float A1 = A;
+
+                float waveVal = 0.0;
+                float dX = 0.0;
+                float dZ = 0.0;
+
+                for (int i = 0; i < numWaves; i++) {
+                    float direction = directions[i];
+                    vec2 dirVec = vec2(cos(direction), sin(direction));
+
+                    float posDirDot = dot(posVec, dirVec);
+                    float comp = posDirDot * w1 + timeSpeed;
+
+                    float sinVal = sin(comp);
+                    float cosVal = cos(comp);
+
+                    waveVal += A1 * exp(sinVal - 1.0);
+
+                    dX += w1 * dirVec.x * A1 * exp(sinVal - 1.0) * cosVal;
+                    dZ += w1 * dirVec.y * A1 * exp(sinVal - 1.0) * cosVal;
+
+                    w1 *= wCoeff;
+                    A1 *= aCoeff;
+                }
+
+                vec4 newPosition = position.xyzw;
+                newPosition.y += waveVal;
+
+                vec3 tangent = vec3(1.0, dX, 0.0);
+                vec3 binormal = vec3(0.0, dZ, 1.0);
+
+                return Wave(newPosition, tangent, binormal);
+            }
+
+            void main(void) {
+                Wave waveStruct = calculateFBM(aVertexPosition, directions, w, wCoeff, A, ACoeff, t, s);
+                
+                vec3 normal = cross(waveStruct.tangent, waveStruct.binormal);
+
+                vColor = aVertexColor;
+                vPosition = waveStruct.position.xyz;
+                vNormal = normal;
+                
+                gl_Position = uProjectionMatrix * uModelViewMatrix * waveStruct.position;
+            }
+        `;
+
+        const waveFragmentShader = `
+            precision highp float;
+
+            struct Lighting {
+                float diffuse;
+                float specular;
+                float ambient;
+            };
+
+            varying vec4 vColor;
+            varying vec3 vPosition;
+            varying vec3 vNormal;
+
+            uniform float diffuseContrast;
+            uniform float diffuseExponent;
+            uniform float specularContrast;
+            uniform float specularExponent;
+            uniform float ambient;
+
+            uniform vec3 sunPosition;
+            uniform vec4 sunColor;
+
+            float clampLight(float val) {
+                return clamp(val, 0.0, 1.0);
+            }
+
+            void main(void) {
+                vec3 vNormal1 = normalize(vNormal);
+
+                vec3 eyeVector = normalize(vPosition * -1.0);
+                vec3 sunVector = normalize(vPosition - sunPosition);
+                vec3 reflectionVec = normalize(2.0 * dot(vNormal1, sunVector) * vNormal1 - sunVector);
+                vec3 halfVector = normalize(eyeVector + sunVector);
+
+                float diffuseCos = dot(vNormal1, sunVector);
+                float diffuse = pow(clampLight(diffuseCos), diffuseExponent) * diffuseContrast;
+
+                float specularCos = dot(vNormal1, halfVector);
+                float specular = pow(clampLight(specularCos), specularExponent) * specularContrast;
+
+                
+                vec4 ambientColor = vColor * ambient;
+                vec4 diffuseColor;
+                vec4 specularColor;
+
+                if (diffuseCos > 0.0) {
+                    diffuseColor = vColor * diffuse;
+                } else if (diffuseCos > -0.2) {
+                    diffuseColor = vColor * (1.0 + diffuse) / 2.0; 
+                }
+                
+                if (specularCos > 0.0) {
+                    specularColor = sunColor * specular;
+                    diffuseColor = diffuseColor * (1.0 - specularCos);
+                } else if (specularCos > -0.2) {
+                    specularColor = sunColor * (1.0 + specular) / 10.0;
+                    diffuseColor = diffuseColor * (1.0 + specular) / 2.0;
+                } else {
+                    specularColor = vec4(0.0, 0.0, 0.0, 0.0);
+                }
+
+                gl_FragColor = ambientColor + diffuseColor + specularColor;
+            }
+        `;
+
+        const skyVertexShader = `
+            precision highp float;
+
+            attribute vec4 aVertexPosition;
+
+            uniform mat4 uModelViewMatrix;
+            uniform mat4 uProjectionMatrix;
+
+            varying vec3 vDir;
+
+            void main(void) {
+                vDir = normalize(aVertexPosition.xyz);
+                gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
+            }
+        `;
+
+        const skyFragmentShader = `
+            precision highp float;
+
+            varying vec3 vDir;
+
+            uniform vec3 sunPosition;
+            uniform vec3 sunPositionNormalized;
+
+            uniform vec4 sunColor;
+            uniform vec4 skyBright;
+            uniform vec4 skyDark;
+
+            uniform float sunExponent;
+            uniform float sunContrast;
+            uniform float sunTheta;
+            uniform float sunDistance;
+            uniform float sunRadius;
+            uniform float sunAtmosphereRadius;
+
+            void main(void) {
+                vec3 direction = normalize(vDir);
+                vec3 sunDirection = normalize(sunPosition);
+
+                float theta = max(0.0, dot(direction, sunDirection));
+                vec4 sun = max(0.0, theta - (1.0 - sunRadius / 1000.0)) * sunColor * sunContrast;
+                vec4 sunAtmosphere =  max(0.0, theta - (1.0 - (sunRadius + sunAtmosphereRadius) / 1000.0)) * sunColor * sunContrast; 
+
+
+                float directionDot = dot(direction, vec3(0.0, 1.0, 0.0));
+
+                float a = max(0.0, directionDot);
+
+                vec4 skyColor = mix(skyDark, skyBright, a + cos(sunTheta + 4.71));
+ 
+                gl_FragColor = vec4(skyColor + sun + sunAtmosphere);
+            }
+        `;
+
+        function onload() {
+            try {
+                setup();
+                startLoop();
+            } catch (error) {
+                alert(error.stack);
+            }
+        }
+
+        function setup() {
+            canvas = document.getElementById('glcanvas');
+
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+
+            gl = canvas.getContext('webgl');
+
+            if (gl === null) {
+                throw new Error("Unable to initialize WebGL. Your browser or machine may not support it.");
+                return;
+            }
+
+            let quads = 200;
+            let gridWidth = 200;
+            let gridHeight = 100;
+            let gridDepth = 100;
+            let offsetX = 0;
+            let offsetY = 0;
+            let offsetZ = gridDepth / -2;
+
+            let sphereRadius = skyDepth / 2;
+            let sphereFaces = 1000;
+
+            for (let i = 0; i < numWaves; i++) {
+                directions.push(Math.random() * Math.PI * 2); 
+            }
+
+            let waveMesh = createRectangleMeshY(quads, gridWidth, gridDepth, offsetX, offsetY, offsetZ);
+            let skyMesh = createSphereMesh(sphereFaces, sphereRadius, 0, 0, 0);
+
+            for (let i = 0; i < waveMesh.length; i += 3) {
+                wavePositions.push(waveMesh[i], waveMesh[i + 1], waveMesh[i + 2]);
+                waveColors.push(0.0, 0.32, 0.46, 1.0);
+            }
+
+            for (let i = 0; i < skyMesh.length; i += 3) {
+                skyPositions.push(skyMesh[i], skyMesh[i + 1], skyMesh[i + 2]);
+                skyColors.push(0.44, 0.8, 0.92, 1.0);
+            }
+
+            data.waveCount = waveMesh.length / 3;
+            data.skyCount = skyMesh.length / 3;
+        }
+
+        function startLoop() {
+            loop = setInterval(function() {
+                data.sunTheta += data.rotSpeedTheta;
+                data.sunTheta %= Math.PI * 2;
+
+                sunPosition[0] = -Math.cos(data.sunTheta) * data.sunDistance;
+                sunPosition[1] = +Math.sin(data.sunTheta) * data.sunDistance;
+
+                draw(gl);
+
+                data.t += dt;
+            }, tickRate);
+        }
+
+        function draw(gl) {
+            gl.clearColor(0.0, 0.0, 0.0, 1.0); 
+            gl.clearDepth(1.0);
+            gl.enable(gl.DEPTH_TEST);
+            gl.depthFunc(gl.LEQUAL);
+
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+            const fieldOfViewWave = Math.PI / 4;
+            const fieldOfViewSky = Math.PI / 2;
+            const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
+
+            const zNearWave = 0.1;
+            const zFarWave = 100.0;
+
+            const zNearSky = 0.1;
+            const zFarSky = skyDepth;
+
+            const projectionMatrixWave = mat4.create();
+            const projectionMatrixSky = mat4.create();
+
+            mat4.perspective(projectionMatrixWave, fieldOfViewWave, aspect, zNearWave, zFarWave);
+            mat4.perspective(projectionMatrixSky, fieldOfViewSky, aspect, zNearSky, zFarSky);
+
+            const modelViewMatrixWave = mat4.create();
+            const modelViewMatrixSky = mat4.create();
+            
+            mat4.translate(modelViewMatrixWave, modelViewMatrixWave,[0.0, -10.0, 0.0]);
+            mat4.rotate(modelViewMatrixWave, modelViewMatrixWave, 0.0, [1.0, 0, 0]);
+
+            mat4.translate(modelViewMatrixSky, modelViewMatrixSky,[0.0, 0.0, 0.0]);
+            mat4.rotate(modelViewMatrixSky, modelViewMatrixSky, 0.0, [0.0, 0, 1.0]);
+
+            const waveBuffers = initBuffers(gl, wavePositions, waveColors);
+            const waveProgram = constructFullShaderProgram(gl, waveVertexShader, waveFragmentShader);
+            finaliseProgram(waveProgram, waveBuffers, projectionMatrixWave, modelViewMatrixWave);
+            gl.drawArrays(gl.TRIANGLES, 0, waveBuffers.vertexCount);
+
+            const skyBuffers = initBuffers(gl, skyPositions, skyColors);
+            const skyProgram = constructFullShaderProgram(gl, skyVertexShader, skyFragmentShader);
+            finaliseProgram(skyProgram, skyBuffers, projectionMatrixSky, modelViewMatrixSky)
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, skyBuffers.vertexCount);
+        }
+
+        function setUniforms(gl, programInfo, shaderProgram, data, projectionMatrix, modelViewMatrix) {
+            gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
+            gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, modelViewMatrix);
+
+            let sunPositionLoc = gl.getUniformLocation(shaderProgram, 'sunPosition');
+            gl.uniform3fv(sunPositionLoc, sunPosition);
+
+            let sunPositionNormalizedLoc = gl.getUniformLocation(shaderProgram, 'sunPositionNormalized');
+            gl.uniform3fv(sunPositionNormalizedLoc, Vector3.from(sunPosition).normalised().array());
+
+            let sunColorLoc = gl.getUniformLocation(shaderProgram, 'sunColor');
+            gl.uniform4fv(sunColorLoc, sunColor);
+
+            let skyBrightLoc = gl.getUniformLocation(shaderProgram, 'skyBright');
+            gl.uniform4fv(skyBrightLoc, skyBright);
+
+            let skyDarkLoc = gl.getUniformLocation(shaderProgram, 'skyDark');
+            gl.uniform4fv(skyDarkLoc, skyDark);
+
+            let directionsLoc = gl.getUniformLocation(shaderProgram, 'directions');
+            gl.uniform1fv(directionsLoc, new Float32Array(directions));
+
+            Object.keys(data).forEach((key) => {
+                const uniformLocation = gl.getUniformLocation(shaderProgram, key);
+                gl.uniform1f(uniformLocation, data[key]);
+            });
+        }
+
+        document.body.addEventListener('mousedown', (e) => {data.rotSpeedTheta *= 10 * (e.ctrlKey ? -1 : 1)});
+        document.body.addEventListener('mouseup', (e) => {data.rotSpeedTheta /= 10 * (data.rotSpeedTheta < 0 ? -1 : 1)});
+    </script>
+</body>
+</html>

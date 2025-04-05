@@ -757,12 +757,20 @@ class Vector2 {
         return new Vector2(-1, -1);
     }
 
+    static from(sourceArr) {
+        return new Vector2(sourceArr[0], sourceArr[1]);
+    }
+
     toString() {
         return this.x + ", " + this.y;
     }
 
     valueOf() {
         return this.magnitude();
+    }
+
+    array() {
+        return [this.x, this.y];
     }
 
     clone() {
@@ -982,12 +990,20 @@ class Vector3 {
         return new Vector3(1, 0, 0);
     }
 
+    static from(sourceArr) {
+        return new Vector3(sourceArr[0], sourceArr[1], sourceArr[2]);
+    }
+
     toString() {
         return this.x + ", " + this.y + ", " + this.z;
     }
 
     valueOf() {
         return this.magnitude();
+    }
+
+    array() {
+        return [this.x, this.y, this.z];
     }
 
     clone() {
