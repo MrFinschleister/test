@@ -18,6 +18,8 @@ function constructFullShaderProgram(gl, vs, fs) {
 
     const programInfo = {
         program: shaderProgram,
+        vertexShader: vertexShader,
+        fragmentShader: fragmentShader,
 
         attribLocations: {
             vertexPosition: gl.getAttribLocation(shaderProgram, "aVertexPosition"),
@@ -54,7 +56,7 @@ function loadShader(gl, type, source) {
     return shader;
 }
 
-function finaliseProgram(programInfo, buffers, projectionMatrix, modelViewMatrix) {
+function finaliseProgram(programInfo, buffers, data, projectionMatrix, modelViewMatrix) {
     setPositionAttribute(gl, buffers, programInfo);
     setColorAttribute(gl, buffers, programInfo);
 
@@ -116,4 +118,20 @@ function initBuffers(gl, positions, colors) {
         color: colorBuffer,
         vertexCount: positions.length / 3,
     };
+}
+
+function deleteShaderProgram(gl, programInfo) {
+    let program = programInfo.program;
+    let vertexShader = programInfo.vertexShader;
+    let fragmentShader = programInfo.fragmentShader;
+
+    gl.detachShader(program, vertexShader);
+    gl.detachShader(program, fragmentShader);
+    gl.deleteShader(vertexShader);
+    gl.deleteShader(fragmentShader);
+}
+
+function deleteBuffers(gl, buffers) {
+    gl.deleteBuffer(buffers.position);
+    gl.deleteBuffer(buffers.color);
 }
