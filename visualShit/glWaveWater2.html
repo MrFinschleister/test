@@ -35,15 +35,15 @@
         let tickRate = 16;
         let dt = 1;
 
-        let numWaves = 5.0;
+        let numWaves = 10.0;
 
         let skyDepth = 2000;
-        let gridQuads = 300;
-        let gridWidth = 1000;
+        let gridQuads = 250;
+        let gridWidth = 100;
         let gridHeight = 100;
-        let gridDepth = 1000;
+        let gridDepth = 100;
         let offsetX = 0;
-        let offsetY = -5;
+        let offsetY = 0;
         let offsetZ = gridDepth / -2;
 
         let sphereRadius = skyDepth / 2;
@@ -67,19 +67,21 @@
             A: 0.5,
             t: 0,
             s: 0.05,
-            wCoeff: 1.35,
-            ACoeff: 0.5,
+            wCoeff: 1.16,
+            ACoeff: 0.84,
 
-            ambient: 0.5,
+            ambient: 0.9,
 
             doSun: 1.0,
-            sunExponent: 250.0,
-            sunContrast: 100.0,
+            sunContrast: 1000.0,
+            sunExponent: 1,
             sunTheta: 0,
             sunPhi: 0,
-            sunDistance: 100,
-            sunRadius: 5,
+            sunDistance: 50,
+            sunRadius: 1,
             sunAtmosphereRadius: 1,
+            sunAtmosphereContrast: 1,
+            sunAtmosphereExponent: 1,
             sunSpeedTheta: 0.005,
             sunSpeedPhi: 0.005,
 
@@ -92,7 +94,7 @@
             cloudContrast: 2,
             cloudExponent: 1,
             cloudSpeed: 0.0001,
-            cloudBias: -0.05,
+            cloudBias: 0.15,
             cloudResetTime: 10000,
         };
 
@@ -101,7 +103,7 @@
         } 
 
         let data4fv = {
-            sunColor: [1.0, 1.0, 0.9, 1.0],
+            sunColor: [0.91, 0.91, 0.6, 1.0],
             cloudColor: [1.0, 1.0, 1.0, 1.0],
             skyBright: [0.0, 0.25, 1.0, 1.0],
             skyDark: [0.3, 0.3, 0.59, 1.0],
@@ -291,12 +293,14 @@
             uniform float cloudSpeed;
 
             uniform float doSun;
-            uniform float sunExponent;
             uniform float sunContrast;
+            uniform float sunExponent;
             uniform float sunTheta;
             uniform float sunDistance;
             uniform float sunRadius;
             uniform float sunAtmosphereRadius;
+            uniform float sunAtmosphereContrast;
+            uniform float sunAtmosphereExponent;
 
             uniform float doClouds;
             uniform float cloudContrast;
@@ -346,17 +350,19 @@
                 return value;
             }
 
-            vec4 getSunColor(vec4 sunColor, float theta, float sunRadius, float sunAtmosphereRadius, float sunContrast) {
-                float sun = max(0.0, theta - (1.0 - sunRadius / 1000.0)) * sunContrast;
-                float sunAtmosphere =  max(0.0, theta - (1.0 - (sunRadius + sunAtmosphereRadius) / 1000.0)) * sunContrast; 
+            vec4 getSunColor(vec4 sunColor, float theta, float sunRadius, float sunAtmosphereRadius, float sunContrast, float sunExponent, float sunAtmosphereContrast, float sunAtmosphereExponent) {
+                float sun = max(0.0, theta - (1.0 - sunRadius / 1000.0));
+                float sunVal = pow(sun, sunExponent) * sunContrast;
+                float sunAtmosphere = max(0.0, theta - (1.0 - (sunRadius + sunAtmosphereRadius) / 1000.0));
+                float sunAtmosphereVal = pow(sunAtmosphere, sunAtmosphereExponent) * sunAtmosphereContrast; 
 
-                vec4 finalSunColor = sun * sunColor;
-                vec4 sunAtmosphereColor = sunAtmosphere * sunColor;
+                vec4 finalSunColor = sunVal * sunColor;
+                vec4 sunAtmosphereColor = sunAtmosphereVal * sunColor;
 
                 return finalSunColor + sunAtmosphereColor;
             }
 
-            vec4 getCloudColor(vec4 cloudColor, vec3 position, vec3 resolution, float directionDot, float time, float cloudSpeed, float cloudContrast, float cloudExponent, float cloudBias) {
+            float getCloudColor(vec3 position, vec3 resolution, float directionDot, float time, float cloudSpeed, float cloudContrast, float cloudExponent, float cloudBias) {
                 vec2 uv = position.xy / resolution.xy;
                 uv.x *= resolution.x / resolution.y;
                 uv.x += time * cloudSpeed;
@@ -364,9 +370,7 @@
                 float cloud = layeredNoiseSmooth(uv, 2.0, 2.0);
                 float cloudVal = max(0.0, pow(cloud, cloudExponent) * cloudContrast * (directionDot - cloudBias));
 
-                vec4 finalCloudColor = cloudColor * cloudVal;
-
-                return finalCloudColor;
+                return cloudVal;
             }
 
             void main(void) {
@@ -379,17 +383,17 @@
                 vec4 skyColor = mix(skyDark, skyBright, a + cos(sunTheta + 4.71));
 
                 vec4 totalSunColor = vec4(0.0);
-                vec4 totalCloudColor = vec4(0.0);
-
                 if (doSun == 1.0) {
-                    totalSunColor = getSunColor(sunColor, theta, sunRadius, sunAtmosphereRadius, sunContrast);
+                    totalSunColor = getSunColor(sunColor, theta, sunRadius, sunAtmosphereRadius, sunContrast, sunExponent, sunAtmosphereContrast, sunAtmosphereExponent);
                 }
 
                 if (doClouds == 1.0) {
-                    totalCloudColor = getCloudColor(cloudColor, vPosition, resolution, directionDot, mod(t, cloudResetTime), cloudSpeed, cloudContrast, cloudExponent, cloudBias);
+                    float cloudVal = getCloudColor(vPosition, resolution, directionDot, mod(t, cloudResetTime), cloudSpeed, cloudContrast, cloudExponent, cloudBias);
+
+                    skyColor = mix(skyColor, cloudColor, cloudVal);
                 }
  
-                gl_FragColor = skyColor + totalCloudColor + totalSunColor;
+                gl_FragColor = skyColor + totalSunColor;
             }
         `;
 
