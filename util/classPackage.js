@@ -1,72 +1,202 @@
 class Terminal {
+    static collapsed = false;
+
+    static defaultColorArr = [0, 0, 0, 0.9];
+    static colorArr = [0, 0, 0, 0.1];
+
+    static defaultTextColorArr = [255, 255, 255, 1];
+    static textColorArr = [255, 255, 255, 1];
+
+    static dimensions = [30, 90, 28, 2, 28, 81];
+    static inset = ["1vh", "1vh", "auto", "auto"];
+    static inInset = ["auto", "auto", "1vh", "1vw"];
+    static outInset = ["1vw", "auto", "auto", "1vw"];
+
+    static recentCommands = [];
+    static recentCommandIndex = 0;
+
+
+    // INITIALISATION
+
+
     static init() {
-        Terminal.commands = {
-            "eval": function (content) {
-                eval(content);
-            },
-            "collapse": function () {
-                if (Terminal.collapsed) {
-                    Terminal.el.style.height = "90vh";
-                } else {
-                    Terminal.el.style.height = "5vh";
-                }
-
-                Terminal.collapsed = !Terminal.collapsed;
-            }
-        }
-
-        Terminal.benchmarks = [];
-        Terminal.benchmarkGroups = {};
-        Terminal.collapsed = false;
-
-        Terminal.el = document.createElement("div");
-        Terminal.el.id = "terminal";
-
-        Terminal.el.style.height = "90vh";
-        Terminal.el.style.width = "30vw";
-        Terminal.el.style.backgroundColor = "rgba(0, 0, 0, .9)";
-        Terminal.el.style.position = "absolute";
-        Terminal.el.style.right = "1vh";
-        Terminal.el.style.top = "1vh";
-        Terminal.el.style.overflowY = "hidden";
-        Terminal.el.style.overflowX = "hidden";
-        Terminal.el.style.border = "1px black solid";
-
-        Terminal.in = document.createElement('input');
-        Terminal.in.onchange = function () {
-            Terminal.inputCommand();
-        }
-
-        Terminal.in.placeholder = "Input Command";
-        Terminal.in.type = "text";
-        Terminal.in.style.width = "25vw";
-        Terminal.in.style.height = "2vh";
-        Terminal.in.style.position = "absolute";
-        Terminal.in.style.bottom = "0.5vh";
-        Terminal.in.style.backgroundColor = "rgba(30, 30, 30, 1)";
-        Terminal.in.style.border = "0";
-        Terminal.in.style.color = "white";
-
-        let hr = document.createElement("hr");
-        hr.style.width = "30vw";
-        hr.style.position = "absolute";
-        hr.style.top = "84vh";
-
-        Terminal.out = document.createElement("div");
-        Terminal.out.style.height = "85vh";
-        Terminal.out.style.overflowY = "scroll";
-        Terminal.out.style.overflowX = "clip";
-        Terminal.out.style.color = "lightgray";
+        Terminal.initEl();
+        Terminal.initIn();
+        Terminal.initOut();
+        Terminal.defaultSize();
+        Terminal.defaultInset();
+        Terminal.defaultSecondaryInsets();
+        Terminal.defaultColor();
+        Terminal.defaultTextColor();
 
         document.body.appendChild(Terminal.el);
         Terminal.el.appendChild(Terminal.out);
-        Terminal.el.appendChild(hr);
         Terminal.el.appendChild(Terminal.in);
+
+        Terminal.clear();
+    }
+
+    static initEl() {
+        let el = document.createElement('div');
+
+        el = document.createElement("div");
+        el.id = "terminal";
+        el.style.position = "fixed";
+        el.style.overflow = "hidden hidden";
+        el.style.border = "1px solid";
+
+        Terminal.el = el;
+    }
+
+    static initIn() {
+        let input = document.createElement('input');
+
+        input.placeholder = "Input Command";
+        input.type = "text";
+        input.style.position = "absolute";
+        input.style.backgroundColor = "rgba(30, 30, 30, 1)";
+        input.style.border = "0";
+
+        input.onkeydown = (e) => {Terminal.inputKeydown(e)};
+
+        Terminal.in = input;
+    }
+
+    static initOut() {
+        let output = document.createElement("div");
+
+        output.style.position = "absolute";
+        output.style.overflow = "clip scroll";
+
+        Terminal.out = output;
+    }
+
+    
+    // APPEARANCE COMMANDS
+
+
+    static defaultSize() {
+        Terminal.setSize(...Terminal.dimensions)
+    }
+
+    static setSize(elWidth, elHeight, inWidth, inHeight, outWidth, outHeight) {
+        Terminal.el.style.width = elWidth + "vw";
+        Terminal.el.style.height = elHeight + "vh";
+
+        Terminal.in.style.width = inWidth + "vw";
+        Terminal.in.style.height = inHeight + "vh";
+
+        Terminal.out.style.width = outWidth + "vw";
+        Terminal.out.style.height = outHeight + "vh";
+    }
+
+    static defaultColor() {
+        Terminal.setColor(Terminal.defaultColorArr);
+    }
+
+    static setColor(color) {
+        Terminal.colorArr = color;
+
+        let rgba = `rgba(${color.join(",")}`;
+
+        Terminal.el.style.backgroundColor = rgba;
+        Terminal.el.style.borderColor = rgba;
+        Terminal.in.style.backgroundColor = rgba;
+        Terminal.out.style.backgroundColor = rgba;
+    }
+
+    static defaultTextColor() {
+        Terminal.setTextColor(Terminal.defaultTextColorArr);
+    }
+
+    static setTextColor(textColor) {
+        Terminal.textColorArr = textColor;
+
+        let rgba = `rgba(${textColor.join(",")})`;
+
+        Terminal.in.style.color = rgba;
+        Terminal.out.style.color = rgba;
+        Terminal.print(`Text color set to: ${textColor}`)
+    }
+
+    static defaultOpacity() {
+        Terminal.setOpacity(Terminal.defaultColorArr[3]);
+    }
+
+    static setOpacity(opacity) {
+        Terminal.colorArr[3] = opacity;
+        Terminal.setColor(Terminal.colorArr);
+        Terminal.print(`Opacity set to: ${opacity}`);
+    }
+
+    static defaultInset() {
+        Terminal.el.style.inset = Terminal.inset.join(" ");
+    }
+
+    static setInset(inset) {
+        Terminal.el.style.inset = inset.join(" ");
+        Terminal.print(`Inset set to: ${Terminal.inset}`);
+    } 
+
+    static defaultSecondaryInsets() {
+        Terminal.setSecondaryInsets(Terminal.inInset, Terminal.outInset);
+    }
+
+    static setSecondaryInsets(inInset, outInset) {
+        Terminal.in.style.inset = inInset.join(" ");
+        Terminal.out.style.inset = outInset.join(" ");
+
+        Terminal.print(`Secondary insets set to: (in) ${Terminal.inInset} (out) ${Terminal.outInset}`);
+    }
+
+
+    // UTILITY COMMANDS
+    
+
+    static eval(content) {
+        eval(content[0]);
+    }
+
+    static collapse() {
+        if (Terminal.collapsed) {
+            Terminal.el.style.height = "90vh";
+        } else {
+            Terminal.el.style.height = "5vh";
+        }
+
+        Terminal.collapsed = !Terminal.collapsed;
+    }
+
+    static hide() {
+        Terminal.el.style.display = "none";
+    }
+
+    static show() {
+        Terminal.el.style.display = "inline";
+    }
+
+    static fuck() {
+        document = null;
+    }
+    
+    static formatText(text) {
+        if (Array.isArray(text)) {
+            text = text.join(", ");
+        }
+
+        return String(text).split(/[ ]/g).join("&nbsp;").replace(/[\n]/g, "<br>");
+    }
+
+    static unformatText(text) {
+        return text.split("&nbsp;").join(" ").split("<br>").join("\n")
     }
 
     static print(text) {
+        let adjustedText = Terminal.formatText(text);
+        
         let p = document.createElement('p');
-        p.innerHTML = String(text).split(" ").join("&nbsp");
+
+        p.innerHTML = adjustedText;
         p.style.height = "fit-content";
         p.style.wordBreak = "break-all";
         p.style.display = "block";
@@ -75,8 +205,11 @@ class Terminal {
     }
 
     static printLink(text, link, fileName) {
+        let adjustedText = Terminal.formatText(text);
+
         let a = document.createElement('a');
-        a.innerHTML = JSON.stringify(text).split(" ").join("&nbsp");
+        
+        a.innerHTML = adjustedText;
         a.style.height = "fit-content";
         a.style.wordBreak = "break-all";
         a.style.display = "block";
@@ -91,21 +224,73 @@ class Terminal {
         Terminal.out.appendChild(a);
     }
 
+    static presetPrintLink(text, content, fileName) {
+        let urlBase = new Blob([content], { type: "text/plain" });
+        let url = URL.createObjectURL(urlBase);
+
+        Terminal.printLink(text + " - " + urlBase.size.toLocaleString() + " bytes", url, fileName);
+    }
+
     static printElement(element) {
         Terminal.out.appendChild(element);
     }
 
-    static inputCommand() {
-        let command = Terminal.in.value;
-        Terminal.in.value = "";
+    static newLine() {
+        Terminal.print("<br>");
+    }
+
+    static inputCommand(command) {
+        Terminal.clearInput();
 
         try {
             let comm = command.split(" ");
 
-            Terminal.commands[comm[0]](comm.slice(1).join(" "));
+            let commandName = comm[0];
+            let parameters = comm.slice(1);
+
+            if (Terminal[commandName]) {
+                let result = Terminal[commandName](parameters);
+
+                if (result) {
+                    Terminal.print(result);
+                } 
+
+                Terminal.recentCommands.push(command);
+                Terminal.recentCommandIndex = Terminal.recentCommands.length;
+            } else {
+                Terminal.print(`\"${commandName}\" not a valid command`);
+            }
         } catch (error) {
             Terminal.error(error);
         }
+    }
+
+    static inputKeydown(e) {
+        let code = e.code;
+
+        if (code == "Enter") {
+            Terminal.inputCommand(Terminal.in.value);
+        } else if (code == "ArrowUp") {
+            if (Terminal.recentCommandIndex > 0) {
+                Terminal.recentCommandIndex--;
+                Terminal.useRecentCommand();
+            }
+        } else if (code == "ArrowDown") {
+            if (Terminal.recentCommandIndex < Terminal.recentCommands.length - 1) {
+                Terminal.recentCommandIndex++;
+                Terminal.useRecentCommand();
+            } else {
+                Terminal.clearInput();
+            }
+        }
+    }
+
+    static useRecentCommand() {
+        Terminal.in.value = Terminal.recentCommands[Terminal.recentCommandIndex];
+    }
+
+    static clearInput() {
+        Terminal.in.value = "";
     }
 
     static error(error) {
@@ -129,407 +314,968 @@ class Terminal {
         Terminal.out.innerHTML = "";
     }
 
-    static clearBenchmarks() {
-        Terminal.benchmarkGroups = {};
-
-        Terminal.createBenchmarkGroup("Main");
-    }
-
-    static addBenchmark(name) {
-        Terminal.addBenchmarkToGroup("Main", name);
-    }
-
-    static createBenchmarkGroup(group) {
-        if (!Terminal.benchmarkGroups[group]) {
-            Terminal.benchmarkGroups[group] = new BenchmarkGroup((text) => { Terminal.print(text) });
-        }
-    }
-
-    static addBenchmarkToGroup(group, name) {
-        if (!Terminal.benchmarkGroups[group]) {
-            return;
+    static generateSaveLink(fileName) {
+        if (fileName == "") {
+            fileName = undefined;
         }
 
-        Terminal.benchmarkGroups[group].addBenchmark(name);
-    }
+        let children = Terminal.out.getElementsByTagName('p');
 
-    static printBenchmarkGroup(group) {
-        if (!Terminal.benchmarkGroups[group]) {
-            return;
+        let output = [];
+
+        for (let child of children) {
+            output.push(Terminal.unformatText(child.innerHTML));
         }
 
-        Terminal.printBenchmarkGroupNames(group);
-        Terminal.print("~~~");
-        Terminal.printBenchmarkGroupTimes(group);
-    }
-
-    static printBenchmarkGroupNames(group) {
-        if (!Terminal.benchmarkGroups[group]) {
-            return;
-        }
-
-        Terminal.benchmarkGroups[group].printNames();
-    }
-
-    static printBenchmarkGroupTimes(group) {
-        if (!Terminal.benchmarkGroups[group]) {
-            return;
-        }
-
-        Terminal.benchmarkGroups[group].printTimes();
-    }
-
-    static printBenchmarkGroupTimesBreakdown() {
-        if (!Terminal.benchmarkGroups[group]) {
-            return;
-        }
-
-        Terminal.benchmarkGroups[group].printTimesBreakdown();
-    }
-
-    static printBenchmarks() {
-        Terminal.printBenchmarkGroup("Main");
+        Terminal.presetPrintLink("Save Terminal Content", output.join("\n"), fileName);
     }
 }
 
-class Benchmark {
-    constructor(name, timestamp) {
+class Benchmarker {
+    constructor(name, time = performance.now()) {
         this.name = name;
-        this.timestamp = timestamp;
+        this.benchmarks = [];
+        
+        this.initializationTime = time;
+        this.currentTime = time;
     }
-}
 
-class BenchmarkGroup {
-    constructor(printFn, elementFn) {
-        this.printFn = printFn || ((text) => { Terminal.out.print(text) });
-        this.elementFn = elementFn || ((element) => { Terminal.printElement(element) });
+    toString(precision = 20) {
+        let averageRelativeTime = parseFloat(this.averageRelativeTime().toFixed(precision));
+        let fromInitialization = parseFloat(this.fromInitialization().toFixed(precision));
+
+        return "~~ Benchmarker ~~\n   Name: " + this.name + "\n   Average Relative Time: " + averageRelativeTime + "\n   Total Time: " + fromInitialization;
+    }
+
+    reset() {
+        let time = performance.now();
 
         this.benchmarks = [];
 
-        this.precision = 3;
+        this.initializationTime = time;
+        this.currentTime = time;
+    }
+    
+    updateCurrentTime() {
+        this.currentTime = performance.now();
     }
 
-    addBenchmark(name) {
-        let newBenchmark = new Benchmark(name, performance.now());
+    setCurrentTime(currentTime) {
+        this.currentTime = currentTime;
+    }
+
+    add() {
+        let absoluteTime = performance.now();
+        let relativeTime = absoluteTime - this.currentTime;
+
+        this.currentTime = absoluteTime;
+
+        let newBenchmark = new Benchmark(absoluteTime, relativeTime);
 
         this.benchmarks.push(newBenchmark);
     }
 
-    printNames() {
+    averageAbsoluteTime() {
+        return this.totalAbsoluteTime() / this.benchmarks.length;
+    }
+
+    averageRelativeTime() {
+        return this.totalRelativeTime() / this.benchmarks.length;
+    }
+
+    totalRelativeTime() {
         let benchmarks = this.benchmarks;
 
-        for (let x = 0; x < benchmarks.length; x++) {
-            this.printFn("Name: " + benchmarks[x].name + "</br> Timestamp: " + String(benchmarks[x].timestamp));
+        let sum = 0;
+
+        for (let i = 0; i < benchmarks.length; i++) {
+            let currentBenchmark = benchmarks[i];
+            let relativeTime = currentBenchmark.relativeTime;
+
+            sum += relativeTime;
+        }
+
+        return sum;
+    }
+
+    totalAbsoluteTime() {
+        return this.currentTime - this.initializationTime;
+    }
+
+    printBenchmarks(printFn) {
+        let benchmarks = this.benchmarks;
+
+        for (let i = 0; i < benchmarks.length; i++) {
+            let currentBenchmark = benchmarks[i];
+            let currentBenchmarkString = currentBenchmark.toString();
+
+            printFn(currentBenchmarkString);
         }
     }
 
-    printTimes() {
-        let benchmarks = this.benchmarks;
-
-        let printString = "";
-
-        for (let x = 1; x < benchmarks.length; x++) {
-            let name = benchmarks[x - 1].name + " to " + benchmarks[x].name + ": ";
-            let time = benchmarks[x].timestamp - benchmarks[x - 1].timestamp;
-            let timeString = String((time).toFixed(this.precision)) + "ms";
-
-            printString += name + timeString + "</br>";
-        }
-
-        let totalTime = String((benchmarks[benchmarks.length - 1].timestamp - benchmarks[0].timestamp).toFixed(this.precision)) + "ms";
-
-        this.printFn(printString);
-        this.printFn("Total Time: " + totalTime);
+    fromInitialization() {
+        return performance.now() - this.initializationTime;
     }
 
-    printTimesBreakdown() {
-        let benchmarks = this.benchmarks;
+    currentToNow() {
+        return performance.now() - this.currentTime;
+    }
+}
 
-        let times = [];
+class Benchmark {
+    constructor(absoluteTime, relativeTime) {
+        this.absoluteTime = absoluteTime;
+        this.relativeTime = relativeTime;
+    }
 
-        let printString = "";
-
-        for (let x = 1; x < benchmarks.length; x++) {
-            let name = benchmarks[x - 1].name + " to " + benchmarks[x].name + ": ";
-            let time = benchmarks[x].timestamp - benchmarks[x - 1].timestamp;
-            let timeString = String((time).toFixed(this.precision)) + "ms";
-
-            times.push([x, time]);
-
-            printString += name + timeString + "</br>";
-        }
-
-        let totalTime = String((benchmarks[benchmarks.length - 1].timestamp - benchmarks[0].timestamp).toFixed(this.precision)) + "ms";
-
-        let calculator = new RegressionCalculator(times);
-        let regression = calculator.getBestRegression();
-        let similarity = calculator.getSimilarity(regression.equation.fn);
-
-        let newTimes = [];
-
-        for (let i of times) {
-            newTimes.push([i[0], regression.equation.fn(i[0])]);
-        }
-
-        let canvas = document.createElement('canvas');
-        let ctx = canvas.getContext('2d');
-
-        let clientDimensions = "15vw";
-        let canvasDimensions = 500;
-
-        canvas.style.width = clientDimensions;
-        canvas.style.height = clientDimensions;
-        canvas.style.border = "1px white solid;"
-        canvas.width = canvasDimensions;
-        canvas.height = canvasDimensions;
-
-        let scaleX = canvasDimensions / (times.length + 1);
-        let scaleY = 1;
-
-        for (let x = 0; x < times.length - 1; x++) {
-            let sel00 = times[x];
-            let sel01 = times[x + 1];
-            let sel10 = newTimes[x];
-            let sel11 = newTimes[x + 1];
-
-            ctx.strokeStyle = "white";
-            ctx.beginPath();
-            ctx.moveTo(sel00[0] * scaleX, sel00[1] * scaleY);
-            ctx.lineTo(sel01[0] * scaleX, sel01[1] * scaleY);
-            ctx.stroke();
-
-            ctx.strokeStyle = "blue";
-            ctx.beginPath();
-            ctx.moveTo(sel10[0] * scaleX, sel10[1] * scaleY);
-            ctx.lineTo(sel11[0] * scaleX, sel11[1] * scaleY);
-            ctx.stroke();
-        }
-
-        this.printFn(printString);
-        this.printFn("Total Time: " + totalTime);
-        this.printFn("Rate of Change Type: " + regression.type + "</br>Format: " + regression.equation.format + "</br>Equation: " + regression.equation.stringFn + "</br>Similarity: " + String(similarity) + (similarity >= 0.7 ? " (good)" : " (bad)"));
-        this.elementFn(canvas);
+    toString() {
+        return this.name + ": \n ~ Absolute Time: " + this.absoluteTime + "\n ~ Relative Time: " + this.relativeTime;
     }
 }
 
 class Matrix {
-    // Instiantiate new matrix with defined row and column values
     constructor(rows, columns) {
         this.rows = rows;
         this.columns = columns;
 
         this.matrix = [];
-        this.presetMatrix();
+        this.setZero();
     }
 
-    // Return a stringified matrix
-    toString() {
-        return JSON.stringify(this.matrix);
-    }
+    static from(rows, columns, source) {
+        let arr = [];
 
-    // Prefill the matrix with zeros
-    presetMatrix() {
-        for (let x = 0; x < this.rows; x++) {
-            this.matrix[x] = [];
+        for (let i = 0; i < rows; i++) {
+            arr[i] = [];
 
-            for (let y = 0; y < this.columns; y++) {
-                this.matrix[x][y] = 0;
+            for (let j = 0; j < columns; j++) {
+                arr[i][j] = source[i][j];
             }
         }
-    }
 
-    // Return the value at a row/column index within the matrix
-    getValue(row, column) {
-        return this.matrix[row][column];
-    }
-
-    // Set the value at a row/column index within the index
-    setValue(row, column, val) {
-        if (row > this.rows || column > this.columns) {
-            throw new Error('Outside matrix bounds.');
-        }
-
-        this.matrix[row][column] = val;
-    }
-
-    // Fill the matrix from a defined source array
-    setMatrix(source) {
-        for (let x = 0; x < this.rows && x < source.length; x++) {
-            for (let y = 0; y < this.columns && y < source[x].length; y++) {
-                this.setValue(x, y, source[x][y]);
-            }
-        }
-    }
-
-    // Return the determinant of the matrix
-    getDeterminant() {
-        if (this.rows != this.columns) {
-            throw new Error('Matrix not square.');
-        }
-
-        if (this.rows == 2) {
-            let a = this.getValue(0, 0);
-            let b = this.getValue(0, 1);
-            let c = this.getValue(1, 0);
-            let d = this.getValue(1, 1);
-
-            return a * d - b * c;
-        } else if (this.rows == 3) {
-            let a = this.getValue(0, 0);
-            let b = this.getValue(0, 1);
-            let c = this.getValue(0, 2);
-            let d = this.getValue(1, 0);
-            let e = this.getValue(1, 1);
-            let f = this.getValue(1, 2);
-            let g = this.getValue(2, 0);
-            let h = this.getValue(2, 1);
-            let i = this.getValue(2, 2);
-
-            return a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
-        } else {
-            throw new Error('I\'m too lazy to implement that.');
-        }
-    }
-
-    // Return a new matrix where each value is equal to its corresponding index's minors in the original matrix
-    replaceMinors() {
-        if (this.rows != 3 || this.columns != 3) {
-            throw new Error('Not a 3x3 matrix.');
-        }
-        let newMatrix = new Matrix(this.rows, this.columns);
-
-        let a = this.getValue(0, 0);
-        let b = this.getValue(0, 1);
-        let c = this.getValue(0, 2);
-        let d = this.getValue(1, 0);
-        let e = this.getValue(1, 1);
-        let f = this.getValue(1, 2);
-        let g = this.getValue(2, 0);
-        let h = this.getValue(2, 1);
-        let i = this.getValue(2, 2);
-
-        let a1 = e * i - h * f;
-        let b1 = d * i - g * f;
-        let c1 = d * h - g * e;
-        let d1 = b * i - h * c;
-        let e1 = a * i - g * c;
-        let f1 = a * h - g * b;
-        let g1 = b * f - e * c;
-        let h1 = a * f - d * c;
-        let i1 = a * e - d * b;
-
-        let matrixArr = [
-            [a1, b1, c1],
-            [d1, e1, f1],
-            [g1, h1, i1]
-        ];
-
-        newMatrix.setMatrix(matrixArr);
+        let newMatrix = new Matrix(rows, columns);
+        newMatrix.set(arr);
 
         return newMatrix;
     }
 
-    // Invert every other sign within the matrix from a defined starting value
-    invertSigns(start) {
-        let counter = start || 0;
+    static identity(dimensions) {
+        let arr = [];
 
-        let newMatrix = new Matrix(this.rows, this.columns);
+        for (let i = 0; i < dimensions; i++) {
+            arr[i] = [];
+            for (let j = 0; j < dimensions; j++) {
+                let value = i == j ? 1 : 0;
+                
+                arr[i][j] = value;
+            }
+        }
 
-        for (let x = 0; x < this.rows; x++) {
-            for (let y = 0; y < this.columns; y++) {
-                let value = this.getValue(x, y);
+        let newMatrix = Matrix.from(dimensions, dimensions, arr);
+
+        return newMatrix;
+    }
+
+    static random(rows, columns) {
+        let arr = [];
+
+        for (let i = 0; i < rows; i++) {
+            let row = [];
+
+            for (let j = 0; j < columns; j++) {
+                row[j] = Math.random();
+            }
+
+            arr[i] = row;
+        }
+
+        let newMatrix = Matrix.from(rows, columns, arr);
+
+        return newMatrix;
+    }
+
+    static rot3DX(alpha) {
+        let sa = Math.sin(alpha);
+        let ca = Math.cos(alpha);
+
+        let arr = [
+            [1, 0, 0],
+            [0, ca, -sa],
+            [0, sa, ca],
+        ];
+
+        let newMatrix = Matrix.from(3, 3, arr);
+
+        return newMatrix;
+    }
+
+    static rot3DY(beta) {
+        let sb = Math.sin(beta);
+        let cb = Math.cos(beta);
+
+        let arr = [
+            [cb, 0, sb],
+            [0, 1, 0],
+            [-sb, 0, cb],
+        ];
+
+        let newMatrix = Matrix.from(3, 3, arr);
+
+        return newMatrix;
+    }
+    
+    static rot3DZ(gamma) {
+        let sg = Math.sin(gamma);
+        let cg = Math.cos(gamma);
+
+        let arr = [
+            [cg, -sg, 0],
+            [sg, cg, 0],
+            [0, 0, 1],
+        ];
+
+        let newMatrix = Matrix.from(3, 3, arr);
+
+        return newMatrix;
+    }
+
+    static rot3D(alpha, beta, gamma) {
+        let matX = Matrix.rot3DX(alpha);
+        let matY = Matrix.rot3DY(beta);
+        let matZ = Matrix.rot3DZ(gamma);
+
+        let newMatrix = matX.multiply(matY).multiply(matZ)
+
+        return newMatrix;
+    }
+
+    static rot3DArray(rotations) {
+        return Matrix.rot3D(rotations[0], rotations[1], rotations[2]);
+    }
+
+    static rot3DMat4(alpha, beta, gamma) {
+        return Matrix.rot3D(alpha, beta, gamma).changeDimensions(4, 4);
+    }
+
+    static rot3DMat4Array(rotations) {
+        return Matrix.rot3DArray(rotations).changeDimensions(4, 4);
+    }
+
+    static translationMat4(tX, tY, tZ) {
+        let newMatrix = new Matrix(4, 4);
+
+        newMatrix.setValue(0, 3, tX);
+        newMatrix.setValue(1, 3, tY);
+        newMatrix.setValue(2, 3, tZ);
+
+        return newMatrix;
+    }
+
+    static translationMat4Array(translations) {
+        return Matrix.translationMat4(translations[0], translations[1], translations[2]);
+    }
+
+    static translationIdentityMat4(tX, tY, tZ) {
+        let newMatrix = Matrix.identity(4);
+
+        newMatrix.setValue(0, 3, tX);
+        newMatrix.setValue(1, 3, tY);
+        newMatrix.setValue(2, 3, tZ);
+
+        return newMatrix;
+    }
+
+    static translationIdentityMat4Array(translations) {
+        return Matrix.translationIdentityMat4(translations[0], translations[1], translations[2]);
+    }
+
+    static affineRotation4D(rotations, translations) {
+        let rotationMatrix = Matrix.rot3DMat4Array(rotations);
+        let translationMatrix = Matrix.translationMat4Array(translations);
+
+        let newMatrix = rotationMatrix.sum(translationMatrix);
+        newMatrix.setValue(3, 3, 1);
+
+        return newMatrix;
+    }
+
+    static affine4D(transformationMatrix, translationMatrix) {
+        let transfMatrix = transformationMatrix.changeDimensions(4, 4);
+        let translMatrix = translationMatrix.changeDimensions(4, 4);
+
+        let newMatrix = transfMatrix.sum(translMatrix);
+        newMatrix.setValue(3, 3, 1);
+
+        return newMatrix;
+    }
+
+    toString() {
+        return JSON.stringify(this.matrix);
+    }
+
+    flat() {
+        return this.matrix.flat();
+    }
+
+    reshape(rows, columns) {
+        let flattened = this.flat();
+        let flattenedLength = flattened.length;
+
+        this.rows = rows;
+        this.columns = columns;
+
+        let arr = [];
+
+        for (let i = 0; i < rows; i++) {
+            arr[i] = [];
+
+            for (let j = 0; j < columns; j++) {
+                let index = i + j * rows;
+
+                arr[i][j] = flattened[index % flattenedLength];
+            }
+        }
+
+        let newMatrix = Matrix.from(rows, columns, arr);
+    }
+
+    setZero() {
+        let rows = this.rows;
+        let columns = this.columns;
+
+        let arr = [];
+
+        for (let i = 0; i < rows; i++) {
+            arr[i] = [];
+
+            for (let j = 0; j < columns; j++) {
+                arr[i][j] = 0;
+            }
+        }
+
+        this.matrix = arr;
+    }
+
+    set(source) {
+        let rows = this.rows;
+        let columns = this.columns;
+
+        let arr = [];
+
+        for (let i = 0; i < rows; i++) {
+            arr[i] = [];
+
+            for (let j = 0; j < columns; j++) {
+                arr[i][j] = source[i][j];
+            }
+        }
+
+        this.matrix = arr;
+    }
+
+    getValue(i, j) {
+        return this.matrix[i][j];
+    }
+
+    setValue(i, j, value) {
+        this.matrix[i][j] = value;
+    }
+
+    getRow(row) {
+        return this.matrix[row];
+    }
+
+    getColumn(column) {
+        let arr = [];
+        let src = this.matrix;
+
+        let rows = this.rows;
+
+        for (let i = 0; i < rows; i++) {
+            arr[i] = src[i][column];
+        }
+
+        return arr;
+    }
+
+    rowToVector(row) {
+        let columns = this.columns;
+        let targetRow = this.getRow(row);
+
+        switch (columns) {
+            case 2: 
+                return Vector2.from(target);
+
+            case 3: 
+                return Vector3.from(target);
+
+            case 4: 
+                return Vector4.from(target);
+        }
+
+        throw new Error("Haven't made that one yet!");
+    }
+
+    columnToVector(column) {
+        let rows = this.rows;
+        let target = this.getColumn(column);
+
+        switch (rows) {
+            case 2: 
+                return Vector2.from(target);
+
+            case 3: 
+                return Vector3.from(target);
+
+            case 4: 
+                return Vector4.from(target);
+        }
+
+        throw new Error("Haven't made that one yet!");
+    }
+
+    scaled(scalar) {
+        let arr = [];
+        let src = this.matrix;
+
+        let rows = this.rows;
+        let columns = this.columns;
+
+        for (let i = 0; i < rows; i++) {
+            let row = [];
+
+            for (let j = 0; j < columns; j++) {
+                let val = src[i][j] * scalar;
+
+                row[j] = val;
+            }
+
+            arr[i] = row;
+        }
+
+        let newMatrix = Matrix.from(rows, columns, arr);
+
+        return newMatrix;
+    }
+
+    sum(matrix2) {
+        let src1 = this.matrix;
+        let src2 = matrix2.matrix;
+        let arr = [];
+
+        let rows1 = this.rows;
+        let columns1 = this.columns;
+        let rows2 = matrix2.rows;
+        let columns2 = matrix2.columns;
+
+        for (let i = 0; i < rows1; i++) {
+            let row = [];
+
+            for (let j = 0; j < columns1; j++) {
+                let val1 = src1[i][j];
+                let val2 = src2[i % rows2][j % columns2];
+
+                row[j] = val1 + val2;
+            }
+
+            arr[i] = row;
+        }
+
+        let newMatrix = Matrix.from(rows1, columns1, arr);
+
+        return newMatrix;
+    }
+
+    difference(matrix2) {
+        let src1 = this.matrix;
+        let src2 = matrix2.matrix;
+        let arr = [];
+
+        let rows1 = this.rows;
+        let columns1 = this.columns;
+        let rows2 = matrix2.rows;
+        let columns2 = matrix2.columns;
+
+        for (let i = 0; i < rows1; i++) {
+            let row = [];
+
+            for (let j = 0; j < columns1; j++) {
+                let val1 = src1[i][j];
+                let val2 = src2[i % rows2][j % columns2];
+
+                row[j] = val1 - val2;
+            }
+
+            arr[i] = row;
+        }
+
+        let newMatrix = Matrix.from(rows1, columns1, arr);
+
+        return newMatrix;
+    }
+
+    product(matrix2) {
+        let src1 = this.matrix;
+        let src2 = matrix2.matrix;
+        let arr = [];
+
+        let rows1 = this.rows;
+        let columns1 = this.columns;
+        let rows2 = matrix2.rows;
+        let columns2 = matrix2.columns;
+
+        for (let i = 0; i < rows1; i++) {
+            let row = [];
+
+            for (let j = 0; j < columns1; j++) {
+                let val1 = src1[i][j];
+                let val2 = src2[i % rows2][j % columns2];
+
+                row[j] = val1 * val2;
+            }
+
+            arr[i] = row;
+        }
+
+        let newMatrix = Matrix.from(rows1, columns1, arr);
+
+        return newMatrix;
+    }
+
+    quotient(matrix2) {
+        let src1 = this.matrix;
+        let src2 = matrix2.matrix;
+        let arr = [];
+
+        let rows1 = this.rows;
+        let columns1 = this.columns;
+        let rows2 = matrix2.rows;
+        let columns2 = matrix2.columns;
+
+        for (let i = 0; i < rows1; i++) {
+            let row = [];
+
+            for (let j = 0; j < columns1; j++) {
+                let val1 = src1[i][j];
+                let val2 = src2[i % rows2][j % columns2];
+
+                row[j] = val1 / val2;
+            }
+
+            arr[i] = row;
+        }
+
+        let newMatrix = Matrix.from(rows1, columns1, arr);
+
+        return newMatrix;
+    }
+
+    addNum(num) {
+        let arr = [];
+        let src = this.matrix;
+
+        let rows = this.rows;
+        let columns = this.columns;
+
+        for (let i = 0; i < rows; i++) {
+            let row = [];
+
+            for (let j = 0; j < columns; j++) {
+                let val = src[i][j];
+
+                row[j] = val + num;
+            }
+
+            arr[i] = row;
+        }
+
+        let newMatrix = Matrix.from(rows, columns, arr);
+
+        return newMatrix;
+    }
+
+    subtractNum(num) {
+        let arr = [];
+        let src = this.matrix;
+
+        let rows = this.rows;
+        let columns = this.columns;
+
+        for (let i = 0; i < rows; i++) {
+            let row = [];
+
+            for (let j = 0; j < columns; j++) {
+                let val = src[i][j];
+
+                row[j] = val - num;
+            }
+
+            arr[i] = row;
+        }
+
+        let newMatrix = Matrix.from(rows, columns, arr);
+
+        return newMatrix;
+    }
+
+    multiplyNum(num) {
+        let arr = [];
+        let src = this.matrix;
+
+        let rows = this.rows;
+        let columns = this.columns;
+
+        for (let i = 0; i < rows; i++) {
+            let row = [];
+
+            for (let j = 0; j < columns; j++) {
+                let val = src[i][j];
+
+                row[j] = val * num;
+            }
+
+            arr[i] = row;
+        }
+
+        let newMatrix = Matrix.from(rows, columns, arr);
+
+        return newMatrix;
+    }
+
+    divideNum(num) {
+        let arr = [];
+        let src = this.matrix;
+
+        let rows = this.rows;
+        let columns = this.columns;
+
+        for (let i = 0; i < rows; i++) {
+            let row = [];
+
+            for (let j = 0; j < columns; j++) {
+                let val = src[i][j];
+
+                row[j] = val / num;
+            }
+
+            arr[i] = row;
+        }
+
+        let newMatrix = Matrix.from(rows, columns, arr);
+
+        return newMatrix;
+    }
+
+    invertSigns(start = 0) {
+        let counter = start;
+
+        let src = this.matrix;
+        let arr = [];
+
+        let rows = this.rows;
+        let columns = this.columns;
+
+        for (let i = 0; i < rows; i++) {
+            let row = [];
+
+            for (let j = 0; j < columns; j++) {
+                let value = src[i][j];
 
                 if (counter % 2 != 0) {
                     value *= -1;
                 }
 
-                newMatrix.setValue(x, y, value);
+                row[j] = value;
 
                 counter++;
             }
+
+            arr[i] = row;
         }
+
+        let newMatrix = Matrix.from(rows, columns, arr);
 
         return newMatrix;
     }
 
-    // Return the matrix with its X and Y axes swapped
-    transpose() {
-        let newMatrix = new Matrix(this.columns, this.rows);
+    transposed() {
+        let src = this.matrix;
+        let arr = [];
 
-        for (let x = 0; x < this.rows; x++) {
-            for (let y = 0; y < this.columns; y++) {
-                newMatrix.setValue(y, x, this.getValue(x, y));
+        let rows = this.rows;
+        let columns = this.columns;
+
+        for (let j = 0; j < columns; j++) {
+            let column = [];
+
+            for (let i = 0; i < rows; i++) {
+                column[i] = src[i][j];
             }
+
+            arr[j] = column;
         }
+
+        let newMatrix = Matrix.from(rows, columns, arr);
 
         return newMatrix;
     }
 
-    // Scale each value within the matrix by a defined scalar
-    scale(scalar) {
-        let newMatrix = new Matrix(this.rows, this.columns);
+    multiply(matrix2) {
+        let rows1 = this.rows;
+        let columns1 = this.columns;
+        let rows2 = matrix2.rows;
+        let columns2 = matrix2.columns;
 
-        for (let x = 0; x < this.rows; x++) {
-            for (let y = 0; y < this.columns; y++) {
-                newMatrix.setValue(x, y, this.getValue(x, y) * scalar);
-            }
-        }
-
-        return newMatrix;
-    }
-
-    // Add two matrices of similar dimensions 
-    add(source) {
-        if (this.rows != source.rows || this.columns != source.columns) {
-            throw new Error('Matrix dimensions not equivilent.');
-        }
-
-        let newMatrix = new Matrix(this.rows, this.columns);
-
-        for (let x = 0; x < this.rows; x++) {
-            for (let y = 0; y < this.columns; y++) {
-                let val = this.getValue(x, y) + source.getValue(x, y);
-
-                newMatrix.setValue(x, y, val);
-            }
-        }
-
-        return newMatrix;
-    }
-
-    // Multiply two matrices of similar inner dimensions
-    multiply(source) {
-        if (this.columns != source.rows) {
+        if (rows1 != columns2) {
             throw new Error('Inner dimensions not equivilent.');
         }
 
-        let newMatrix = new Matrix(this.rows, source.columns);
+        let src1 = this.matrix;
+        let src2 = matrix2.matrix;
+        let newMatrix = new Matrix(rows1, columns2);
 
-        for (let column = 0; column < source.columns; column++) {
-            for (let x = 0; x < this.rows; x++) {
+        for (let k = 0; k < columns2; k++) {
+            for (let i = 0; i < rows1; i++) {
                 let val = 0;
 
-                for (let y = 0; y < this.columns; y++) {
-                    val += this.getValue(x, y) * source.getValue(y, column);
+                for (let j = 0; j < columns1; j++) {
+                    val += src1[i][j] * src2[j][k];
                 }
 
-                newMatrix.setValue(x, column, val);
+                newMatrix.setValue(i, k, val);
             }
         }
 
         return newMatrix;
     }
 
-    // Return the inversion of the matrix
-    invert() {
-        let determinant = this.getDeterminant();
-        let minors = this.replaceMinors();
-        let signInverted = minors.invertSigns();
-        let transposed = signInverted.transpose();
+    complementarySubmatrix(exI, exJ) {
+        let arr = [];
 
-        let result = transposed.scale(1 / determinant);
+        let src = this.matrix;
 
-        return result;
+        let rows = this.rows;
+        let columns = this.columns;
+
+        let indexI = 0;
+
+        for (let i = 0; i < rows; i++) {
+            if (i != exI) {
+                let indexJ = 0;
+
+                arr[indexI] = [];
+
+                for (let j = 0; j < columns; j++) {
+                    if (j != exJ) {
+                        let val = src[i][j];
+                        arr[indexI][indexJ] = val;
+
+                        indexJ++;
+                    }
+                }
+
+                indexI++;
+            }
+        }
+
+        let newMatrix = Matrix.from(rows - 1, columns - 1, arr);
+
+        return newMatrix;
+    }
+
+    determinant() {
+        let src = this.matrix;
+
+        let rows = this.rows;
+        let columns = this.columns;
+
+        if (rows != columns) {
+            throw new Error("Not a square matrix.");
+        }
+
+        if (rows == 1) {
+            return src[0][0];
+        } else if (rows == 2) {
+            let a = src[0][0];
+            let b = src[0][1];
+            let c = src[1][0];
+            let d = src[1][1];
+    
+            return a * d - b * c;
+        } else {
+            let val = 0;
+
+            for (let j = 0; j < columns; j++) {
+                let coeff = j % 2 == 0 ? 1 : -1;
+                let el = src[0][j];
+                let complementarySubmatrix = this.complementarySubmatrix(0, j);
+                let det = complementarySubmatrix.determinant();
+
+                val += coeff * el * det;
+            }
+
+            return val;
+        }
+    }
+
+    minors() {
+        let arr = [];
+        let src = this.matrix;
+
+        let rows = this.rows;
+        let columns = this.columns;
+
+        for (let i = 0; i < rows; i++) {
+            let row = [];
+
+            for (let j = 0; j < columns; j++) {
+                let complementarySubmatrix = this.complementarySubmatrix(i, j);
+                let det = complementarySubmatrix.determinant();
+
+                row[j] = det;
+            }
+
+            arr[i] = row;
+        }
+
+        let newMatrix = Matrix.from(rows, columns, arr);
+
+        return newMatrix;
+    }
+
+    inverse() {
+        let determinant = this.determinant();
+        let minors = this.minors();
+        let invertSigns = minors;
+        let transposed = invertSigns.transposed().invertSigns();
+
+        let inverse = transposed.scaled(1 / determinant);
+
+        return inverse;
+    }
+
+    map(fn) {
+        let arr = [];
+        let src = this.matrix;
+
+        let rows = this.rows;
+        let columns = this.columns;
+
+        for (let i = 0; i < rows; i++) {
+            let row = [];
+
+            for (let j = 0; j < columns; j++) {
+                let el = src[i][j];
+                let val = fn(el, i, j);
+
+                row[j] = val;
+            }
+
+            arr[i] = row;
+        }
+
+        let newMatrix = Matrix.from(rows, columns, arr);
+
+        return newMatrix;
+    }
+
+    rotateX(alpha) {
+        if (this.rows != 3 || this.columns != 3) {
+            throw new Error("Not a 3D matrix.");
+        }
+
+        let rotationMatrix = Matrix.rot3DX(alpha);
+        let newMatrix = this.multiply(rotationMatrix);
+
+        return newMatrix;
+    } 
+
+    rotateY(beta) {
+        if (this.rows != 3 || this.columns != 3) {
+            throw new Error("Not a 3D matrix.");
+        }
+
+        let rotationMatrix = Matrix.rot3DX(beta);
+        let newMatrix = this.multiply(rotationMatrix);
+
+        return newMatrix;
+    }
+
+    rotateZ(gamma) {
+        if (this.rows != 3 || this.columns != 3) {
+            throw new Error("Not a 3D matrix.");
+        }
+
+        let rotationMatrix = Matrix.rot3DX(gamma);
+        let newMatrix = this.multiply(rotationMatrix);
+
+        return newMatrix;
+    }
+
+    changeDimensions(targetRows, targetColumns, wrap = false) {
+        let arr = [];
+        let src = this.matrix;
+
+        let rows = this.rows;
+        let columns = this.columns;
+
+        if (wrap) {
+            for (let i = 0; i < targetRows; i++) {
+                let row = [];
+
+                for (let j = 0; j < targetColumns; j++) {
+                    row[j] = src[i % rows][j % columns];
+                }
+
+                arr[i] = row;
+            }
+        } else {
+            for (let i = 0; i < targetRows; i++) {
+                let row = [];
+
+                for (let j = 0; j < targetColumns; j++) {
+                    let el;
+
+                    if (i >= rows || j >= columns) {
+                        el = 0;
+                    } else {
+                        el = src[i][j];
+                    } 
+
+                    row[j] = el;
+                }
+
+                arr[i] = row;
+            }
+        }
+
+        let newMatrix = Matrix.from(targetRows, targetColumns, arr);
+
+        return newMatrix
+    }
+
+    reciprocal() {
+        let arr = [];
+        let src = this.matrix;
+
+        let rows = this.rows;
+        let columns = this.columns;
+
+        for (let i = 0; i < rows; i++) {
+            let row = [];
+
+            for (let j = 0; j < columns; j++) {
+                let val = src[i][j];
+
+                row[j] = 1 / val;
+            }
+
+            arr[i] = row;
+        }
+
+        let newMatrix = Matrix.from(rows, columns, arr);
+
+        return newMatrix;
     }
 }
 
@@ -644,21 +1390,18 @@ class RegressionCalculator {
             sX2Y += x * x * y;
         };
 
-        const intermediate = new Matrix(3, 3);
-        intermediate.setMatrix([
+        const intermediate = new Matrix(3, 3, [
             [sX4, sX3, sX2],
             [sX3, sX2, sX],
             [sX2, sX, n],
         ]);
 
-        const output = new Matrix(3, 1)
-        output.setMatrix([
+        const output = Matrix.from(3, 1, [
             [sX2Y],
             [sXY],
             [sY],
-        ]);
-
-        const result = intermediate.invert().multiply(output);
+        ])
+        const result = intermediate.inverse().multiply(output);
 
         const a = result.getValue(0, 0);
         const b = result.getValue(1, 0);
@@ -707,13 +1450,33 @@ class Vector2 {
         this.y = y;
     }
 
+    static value(value) {
+        return new Vector2(value, value);
+    }
+
     static neutral() {
         return new Vector2(0, 0);
+    }
+
+    static one() {
+        return new Vector2(1, 1);
+    }
+
+    static half() {
+        return new Vector2(0.5, 0.5);
     }
 
     static unitRand() {
         let angle = Math.random() * Math.PI * 2;
 
+        return new Vector2(-Math.cos(angle), Math.sin(angle));
+    }
+
+    static rand() {
+        return new Vector2(Math.random(), Math.random());
+    }
+
+    static rotate(angle) {
         return new Vector2(-Math.cos(angle), Math.sin(angle));
     }
 
@@ -780,6 +1543,11 @@ class Vector2 {
     set(v2) {
         this.x = v2.x;
         this.y = v2.y;
+    }
+
+    zero() {
+        this.x = 0;
+        this.y = 0;
     }
 
     // basic operations that reassign values
@@ -887,6 +1655,10 @@ class Vector2 {
         return x * x + y * y;
     }
 
+    crossProd(v2) {
+        return this.x * v2.y - this.y * v2.x;
+    }
+
     capNum(num) {
         if (this.x > num) {
             this.x = num;
@@ -898,6 +1670,24 @@ class Vector2 {
             this.y = num;
         } else if (this.y < -num) {
             this.y = -num;
+        }
+    }
+
+    min(num) {
+        if (this.x < num) {
+            this.x = num;
+        }
+        if (this.y < num) {
+            this.y = num;
+        }
+    }
+
+    max(num) {
+        if (this.x > num) {
+            this.x = num;
+        }
+        if (this.y > num) {
+            this.y = num;
         }
     }
 
@@ -935,8 +1725,26 @@ class Vector2 {
         return v1.sum(origin);
     }
 
-    round() {
+    rounded() {
         return new Vector2(Math.round(this.x), Math.round(this.y));
+    }
+
+    round() {
+        this.x = Math.round(this.x);
+        this.y = Math.round(this.y);
+    }
+
+    floored() {
+        return new Vector2(Math.floor(this.x), Math.floor(this.y));
+    }
+
+    floor() {
+        this.x = Math.floor(this.x);
+        this.y = Math.floor(this.y);
+    }
+
+    mod(num) {
+        return new Vector2(this.x % num, this.y % num);
     }
 
     greaterThan(v2) {
@@ -954,6 +1762,38 @@ class Vector2 {
     lessThanEq(v2) {
         return (this.x <= v2.x && this.y <= v2.y);
     }
+
+    toVector2() {
+        return this.clone();
+    }
+
+    toVector3() {
+        return new Vector3(this.x, this.y, 1);
+    }
+
+    toVector4() {
+        return new Vector4(this.x, this.y, 1, 1);
+    }
+
+    vectorX() {
+        return new Vector2(this.x, 0);
+    }
+
+    vectorY() {
+        return new Vector2(0, this.y);
+    }
+
+    toRowMatrix() {
+        let newMatrix = Matrix.from(1, 2, [[this.x, this.y]]);
+        
+        return newMatrix;
+    }
+
+    toColumnMatrix() {
+        let newMatrix = Matrix.from(2, 1, [[this.x], [this.y]]);
+
+        return newMatrix;
+    }
 }
 
 class Vector3 {
@@ -963,14 +1803,30 @@ class Vector3 {
         this.z = z;
     }
 
+    static value(value) {
+        return new Vector3(value, value, value);
+    }
+
     static neutral() {
         return new Vector3(0, 0, 0);
     }
 
+    static one() {
+        return new Vector3(1, 1, 1);
+    }
+
+    static half() {
+        return new Vector3(0.5, 0.5, 0.5);
+    }
+
     static unitRand() {
         let theta = Math.random() * Math.PI * 2;
-        let phi = Math.random() * Math.PI;
+        let phi = Math.random() * Math.PI * 2;
 
+        return new Vector3(Math.sin(phi) * Math.cos(theta), Math.sin(phi) * Math.sin(theta), Math.cos(phi));
+    }
+
+    static rotate(theta, phi) {
         return new Vector3(Math.sin(phi) * Math.cos(theta), Math.sin(phi) * Math.sin(theta), Math.cos(phi));
     }
 
@@ -988,6 +1844,14 @@ class Vector3 {
 
     static right() {
         return new Vector3(1, 0, 0);
+    }
+
+    static forward() {
+        return new Vector3(0, 0, 1);
+    }
+
+    static backward() {
+        return new Vector3(0, 0, -1);
     }
 
     static from(sourceArr) {
@@ -1014,6 +1878,12 @@ class Vector3 {
         this.x = v2.x;
         this.y = v2.y;
         this.z = v2.z;
+    }
+
+    zero() {
+        this.x = 0;
+        this.y = 0;
+        this.z = 0;
     }
 
     // basic operations that reassign values
@@ -1162,6 +2032,30 @@ class Vector3 {
         }
     }
 
+    min(num) {
+        if (this.x < num) {
+            this.x = num;
+        }
+        if (this.y < num) {
+            this.y = num;
+        }
+        if (this.z < num) {
+            this.z = num;
+        }
+    }
+
+    max(num) {
+        if (this.x > num) {
+            this.x = num;
+        }
+        if (this.y > num) {
+            this.y = num;
+        }
+        if (this.z > num) {
+            this.z = num;
+        }
+    }
+
     isEqual(v2, tolerance) {
         if (tolerance) {
             if (Math.abs(this.x - v2.x) < tolerance && Math.abs(this.y - v2.y) < tolerance && Math.abs(this.z - v2.z) < tolerance) {
@@ -1180,15 +2074,13 @@ class Vector3 {
         return this.sum(new Vector3(v2.x - this.x, v2.y - this.y, v2.z - this.z).scaled(weight));
     }
 
+    scaleZ(near) {
+        let z = this.z;
 
-    scaleZ(scalar, origin) {
-        let difference = this.difference(origin);
-
-        if (difference.z == 0) {
-            return this.clone();
-        }
-
-        return difference.scaled(scalar / difference.z);
+        let x = (near * this.x) / -z;
+        let y = (near * this.y) / -z;
+        
+        return new Vector3(x, y, z);
     }
 
     rotateDeg(degs, origin) {
@@ -1211,14 +2103,14 @@ class Vector3 {
         let cz = Math.cos(rads.z);
         let sz = Math.sin(rads.z);
 
-        let zx = rads.z != 0 ? v1.x * cz - v1.y * sz : v1.x;
-        let zy = rads.z != 0 ? v1.y * cz + v1.x * sz : v1.y;
+        let zx = v1.x * cz - v1.y * sz;
+        let zy = v1.y * cz + v1.x * sz;
 
-        let yx = rads.y != 0 ? zx * cy - v1.z * sy : zx;
-        let yz = rads.y != 0 ? v1.z * cy + zx * sy : v1.z;
+        let yx = zx * cy - v1.z * sy;
+        let yz = v1.z * cy + zx * sy;
 
-        let xy = rads.x != 0 ? zy * cx - yz * sx : zy;
-        let xz = rads.x != 0 ? yz * cx + zy * sx : yz;
+        let xy = zy * cx - yz * sx;
+        let xz = yz * cx + zy * sx;
 
         v1.x = yx;
         v1.y = xy;
@@ -1227,8 +2119,28 @@ class Vector3 {
         return v1.sum(origin);
     }
 
-    round() {
+    rounded() {
         return new Vector3(Math.round(this.x), Math.round(this.y), Math.round(this.z));
+    }
+
+    round() {
+        this.x = Math.round(this.x);
+        this.y = Math.round(this.y);
+        this.z = Math.round(this.z);
+    }
+
+    floored() {
+        return new Vector3(Math.floor(this.x), Math.floor(this.y), Math.floor(this.z));
+    }
+
+    floor() {
+        this.x = Math.floor(this.x);
+        this.y = Math.floor(this.y);
+        this.z = Math.floor(this.z);
+    }
+
+    mod(num) {
+        return new Vector3(this.x % num, this.y % num, this.z % num);
     }
 
     greaterThan(v2) {
@@ -1246,32 +2158,443 @@ class Vector3 {
     lessThanEq(v2) {
         return (this.x <= v2.x && this.y <= v2.y && this.z <= v2.z);
     }
+
+    toVector2() {
+        return new Vector2(this.x, this.y);
+    }
+
+    toVector3() {
+        return this.clone();
+    }
+
+    toVector4() {
+        return new Vector4(this.x, this.y, this.z, 1);
+    }
+
+    vectorX() {
+        return new Vector3(this.x, 0, 0);
+    }
+
+    vectorY() {
+        return new Vector3(0, this.y, 0);
+    }
+
+    vectorZ() {
+        return new Vector3(0, 0, this.z);
+    }
+
+    toRowMatrix() {
+        let newMatrix = Matrix.from(1, 3, [[this.x, this.y, this.z]]);
+
+        return newMatrix;
+    }
+
+    toColumnMatrix() {
+        let newMatrix = Matrix.from(3, 1, [[this.x], [this.y], [this.z]]);
+
+        return newMatrix;
+    }
 }
 
-class Perlin {
-    constructor(seed) {
-        this.seed = 0;
+class Vector4 {
+    constructor(x, y, z, w) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.w = w;
+    }
 
-        for (let x = 0; x < String(seed).length; x++) {
-            this.seed += String(seed).charCodeAt(x);
+    static value(value) {
+        return new Vector4(value, value, value, value);
+    }
+
+    static neutral() {
+        return new Vector4(0, 0, 0, 0);
+    }
+
+    static one() {
+        return new Vector4(1, 1, 1, 1);
+    }
+
+    static half() {
+        return new Vector4(0.5, 0.5, 0.5, 0.5);
+    }
+
+    static up() {
+        return new Vector4(0, 1, 0, 0);
+    }
+
+    static down() {
+        return new Vector4(0, -1, 0, 0);
+    }
+
+    static left() {
+        return new Vector4(-1, 0, 0, 0);
+    }
+
+    static right() {
+        return new Vector4(1, 0, 0, 0);
+    }
+
+    static from(sourceArr) {
+        return new Vector4(sourceArr[0], sourceArr[1], sourceArr[2], sourceArr[3]);
+    }
+
+    toString() {
+        return this.x + ", " + this.y + ", " + this.z + ", " + this.w;
+    }
+
+    valueOf() {
+        return this.magnitude();
+    }
+
+    array() {
+        return [this.x, this.y, this.z, this.w];
+    }
+
+    clone() {
+        return new Vector4(this.x, this.y, this.z, this.w);
+    }
+
+    set(v2) {
+        this.x = v2.x;
+        this.y = v2.y;
+        this.z = v2.z;
+        this.w = v2.w;
+    }
+
+    zero() {
+        this.x = 0;
+        this.y = 0;
+        this.z = 0;
+        this.w = 0;
+    }
+
+    // basic operations that reassign values
+
+    add(v2) {
+        this.x += v2.x;
+        this.y += v2.y;
+        this.z += v2.z;
+        this.w += v2.w;
+    }
+
+    subtract(v2) {
+        this.x -= v2.x;
+        this.y -= v2.y;
+        this.z -= v2.z;
+        this.w -= v2.w;
+    }
+
+    multiply(v2) {
+        this.x *= v2.x;
+        this.y *= v2.y;
+        this.z *= v2.z;
+        this.w *= v2.w;
+    }
+
+    divide(v2) {
+        this.x /= v2.x;
+        this.y /= v2.y;
+        this.z /= v2.z;
+        this.w /= v2.w;
+    }
+
+    scale(scalar) {
+        this.x *= scalar;
+        this.y *= scalar;
+        this.z *= scalar;
+        this.w *= scalar;
+    }
+
+    normalise() {
+        let magnitude = this.magnitude();
+
+        if (magnitude == 0) {
+            return;
+        } else {
+            this.x /= magnitude;
+            this.y /= magnitude;
+            this.z /= magnitude;
+            this.w /= magnitude;
+        }
+    }
+
+    // basic operations the maintain values and return a new vector
+
+    sum(v2) {
+        return new Vector4(this.x + v2.x, this.y + v2.y, this.z + v2.z, this.w + v2.w);
+    }
+
+    difference(v2) {
+        return new Vector4(this.x - v2.x, this.y - v2.y, this.z - v2.z, this.w - v2.w);
+    }
+
+    product(v2) {
+        return new Vector4(this.x * v2.x, this.y * v2.y, this.z * v2.z, this.w * v2.w);
+    }
+
+    quotient(v2) {
+        return new Vector4(this.x / v2.x, this.y / v2.y, this.z / v2.z, this.w / v2.w);
+    }
+
+    distance(v2) {
+        let xDiff = this.x - v2.x;
+        let yDiff = this.y - v2.y;
+        let zDiff = this.z - v2.z;
+        let wDiff = this.w - v2.w;
+
+        return Math.sqrt(xDiff * xDiff + yDiff * yDiff + zDiff * zDiff + wDiff * wDiff);
+    }
+
+    squaredDistance(v2) {
+        let xDiff = this.x - v2.x;
+        let yDiff = this.y - v2.y;
+        let zDiff = this.z - v2.z;
+        let wDiff = this.w - v2.w;
+
+        return xDiff * xDiff + yDiff * yDiff + zDiff * zDiff + wDiff * wDiff;
+    }
+
+    scaled(scalar) {
+        return new Vector4(this.x * scalar, this.y * scalar, this.z * scalar, this.w * scalar);
+    }
+
+    normalised() {
+        let magnitude = this.magnitude();
+
+        if (magnitude == 0) {
+            return new Vector4(0, 0, 0, 0);
+        } else {
+            return new Vector4(this.x / magnitude, this.y / magnitude, this.z / magnitude, this.w / magnitude);
+        }
+    }
+
+    // other general operations
+
+    average(v2) {
+        return new Vector3((this.x + v2.x) / 2, (this.y + v2.y) / 2, (this.z + v2.z) / 2, (this.w + v2.w) / 2);
+    }
+
+    magnitude() {
+        return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w);
+    }
+
+    dotProd(v2) {
+        return this.x * v2.x + this.y * v2.y + this.z * v2.z + this.w * v2.w;
+    }
+
+    dotProdSelf() {
+        let x = this.x;
+        let y = this.y;
+        let z = this.z;
+        let w = this.w;
+
+        return x * x + y * y + z * z + w * w;
+    }
+
+    capNum(num) {
+        if (this.x > num) {
+            this.x = num;
+        } else if (this.x < -num) {
+            this.x = -num;
         }
 
-        this.perm = [151, 160, 137, 91, 90, 15,
-            131, 13, 201, 95, 96, 53, 194, 233, 7, 225, 140, 36, 103, 30, 69, 142, 8, 99, 37, 240, 21, 10, 23,
-            190, 6, 148, 247, 120, 234, 75, 0, 26, 197, 62, 94, 252, 219, 203, 117, 35, 11, 32, 57, 177, 33,
-            88, 237, 149, 56, 87, 174, 20, 125, 136, 171, 168, 68, 175, 74, 165, 71, 134, 139, 48, 27, 166,
-            77, 146, 158, 231, 83, 111, 229, 122, 60, 211, 133, 230, 220, 105, 92, 41, 55, 46, 245, 40, 244,
-            102, 143, 54, 65, 25, 63, 161, 1, 216, 80, 73, 209, 76, 132, 187, 208, 89, 18, 169, 200, 196,
-            135, 130, 116, 188, 159, 86, 164, 100, 109, 198, 173, 186, 3, 64, 52, 217, 226, 250, 124, 123,
-            5, 202, 38, 147, 118, 126, 255, 82, 85, 212, 207, 206, 59, 227, 47, 16, 58, 17, 182, 189, 28, 42,
-            223, 183, 170, 213, 119, 248, 152, 2, 44, 154, 163, 70, 221, 153, 101, 155, 167, 43, 172, 9,
-            129, 22, 39, 253, 19, 98, 108, 110, 79, 113, 224, 232, 178, 185, 112, 104, 218, 246, 97, 228,
-            251, 34, 242, 193, 238, 210, 144, 12, 191, 179, 162, 241, 81, 51, 145, 235, 249, 14, 239, 107,
-            49, 192, 214, 31, 181, 199, 106, 157, 184, 84, 204, 176, 115, 121, 50, 45, 127, 4, 150, 254,
-            138, 236, 205, 93, 222, 114, 67, 29, 24, 72, 243, 141, 128, 195, 78, 66, 215, 61, 156, 180];
+        if (this.y > num) {
+            this.y = num;
+        } else if (this.y < -num) {
+            this.y = -num;
+        }
+
+        if (this.z > num) {
+            this.z = num;
+        } else if (this.z < -num) {
+            this.z = -num;
+        }
+
+        if (this.w > num) {
+            this.w = num;
+        } else if (this.w < -num) {
+            this.w = -num;
+        }
+    }
+
+    min(num) {
+        if (this.x < num) {
+            this.x = num;
+        }
+        if (this.y < num) {
+            this.y = num;
+        }
+        if (this.z < num) {
+            this.z = num;
+        }
+        if (this.w < num) {
+            this.w = num;
+        }
+    }
+
+    max(num) {
+        if (this.x > num) {
+            this.x = num;
+        }
+        if (this.y > num) {
+            this.y = num;
+        }
+        if (this.z > num) {
+            this.z = num;
+        }
+        if (this.w > num) {
+            this.w = num;
+        }
+    }
+
+    lerp(v2, weight) {
+        return this.sum(new Vector4(v2.x - this.x, v2.y - this.y, v2.z - this.z, v2.w - this.w).scaled(weight));
+    }
+
+    round() {
+        this.x = Math.round(this.x);
+        this.y = Math.round(this.y);
+        this.z = Math.round(this.z);
+        this.w = Math.round(this.w);
+    }
+
+    rounded() {
+        return new Vector4(Math.round(this.x), Math.round(this.y), Math.round(this.z), Math.round(this.w));
+    }
+
+    floor() {
+        this.x = Math.floor(this.x);
+        this.y = Math.floor(this.y);
+        this.z = Math.floor(this.z);
+        this.w = Math.floor(this.w);
+    }
+
+    floored() {
+        return new Vector4(Math.floor(this.x), Math.floor(this.y), Math.floor(this.z), Math.floor(this.w));
+    }
+
+    fastFloor() {
+        this.x = ~~this.x;
+        this.y = ~~this.y;
+        this.z = ~~this.z;
+        this.w = ~~this.w;
+    }
+
+    fastFloored() {
+        return new Vector4(~~this.x, ~~this.y, ~~this.z, ~~this.w);
+    }
+
+    mod(num) {
+        return new Vector4(this.x % num, this.y % num, this.z % num, this.w % num);
+    }
+
+    toRowMatrix() {
+        let newMatrix = Matrix.from(1, 4, [[this.x, this.y, this.z, this.w]]);
+        
+        return newMatrix;
+    }
+
+    toColumnMatrix() {
+        let newMatrix = Matrix.from(4, 1, [[this.x], [this.y], [this.z], [this.w]]);
+
+        return newMatrix;
+    }
+
+    toVector2() {
+        return new Vector2(this.x, this.y);
+    }
+
+    toVector3() {
+        return new Vector3(this.x, this.y, this.z);
+    }
+
+    toVector4() {
+        return this.clone();
+    }
+
+    vectorX() {
+        return new Vector4(this.x, 0, 0, 0);
+    }
+
+    vectorY() {
+        return new Vector4(0, this.y, 0, 0);
+    }
+
+    vectorZ() {
+        return new Vector4(0, 0, this.z, 0);
+    }
+
+    vectorW() {
+        return new Vector4(0, 0, 0, this.w);
+    }
+
+    toRGBA() {
+        return new RGBA(this.x, this.y, this.z, this.w);
+    }
+}
+
+class Noise {
+    constructor(seed) {
+        seed = String(seed);
+
+        let seedSum = 0;
+
+        for (let x = 0; x < seed.length; x++) {
+            seedSum += seed.charCodeAt(x);
+        }
+
+        this.seed = seedSum;
+
+        let permTableSize = 1024;
+        
+        let grad = [[1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],[1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],[0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]];
+        let p = [207, 938, 803, 318, 19, 860, 572, 788, 221, 140, 219, 1011, 893, 76, 326, 823, 118, 441, 455, 523, 284, 29, 218, 717, 290, 599, 241, 968, 520, 364, 676, 546, 350, 460, 335, 583, 197, 785, 173, 478, 778, 362, 477, 855, 565, 67, 593, 456, 195, 816, 745, 534, 47, 69, 451, 10, 783, 995, 807, 874, 827, 576, 54, 271, 296, 633, 687, 85, 1005, 60, 772, 225, 881, 492, 249, 11, 824, 756, 975, 204, 792, 904, 172, 238, 235, 883, 163, 120, 820, 562, 188, 202, 276, 119, 84, 57, 277, 43, 866, 418, 356, 174, 321, 898, 697, 337, 766, 393, 349, 315, 943, 996, 793, 514, 751, 636, 956, 1019, 992, 420, 510, 611, 953, 566, 260, 835, 838, 568, 436, 729, 35, 51, 659, 890, 651, 849, 376, 338, 105, 691, 942, 110, 936, 283, 919, 515, 444, 804, 532, 99, 799, 267, 596, 181, 630, 822, 136, 483, 231, 344, 760, 1001, 535, 125, 299, 182, 66, 143, 198, 214, 900, 921, 701, 100, 484, 579, 266, 48, 524, 930, 674, 454, 495, 845, 791, 216, 863, 563, 649, 536, 466, 619, 23, 1002, 130, 809, 519, 764, 439, 223, 922, 1012, 522, 1015, 814, 408, 787, 733, 461, 607, 511, 564, 300, 360, 923, 935, 817, 365, 36, 73, 552, 854, 983, 485, 90, 322, 193, 343, 907, 789, 689, 929, 531, 1003, 932, 403, 658, 648, 709, 206, 359, 645, 469, 352, 802, 413, 644, 228, 740, 390, 775, 210, 158, 727, 92, 106, 829, 547, 83, 828, 127, 848, 627, 948, 719, 398, 38, 482, 257, 432, 587, 324, 168, 298, 657, 967, 896, 329, 270, 856, 677, 150, 423, 117, 250, 471, 13, 336, 978, 749, 600, 683, 693, 553, 440, 108, 990, 870, 272, 357, 199, 582, 366, 797, 287, 716, 892, 586, 406, 819, 833, 590, 372, 18, 75, 1017, 1018, 385, 91, 5, 310, 631, 516, 374, 212, 504, 229, 682, 463, 965, 102, 741, 407, 984, 584, 388, 518, 813, 142, 104, 612, 949, 320, 263, 867, 52, 639, 871, 265, 89, 341, 203, 726, 26, 264, 0, 805, 45, 662, 557, 696, 746, 309, 832, 186, 171, 795, 128, 912, 985, 139, 465, 494, 872, 405, 430, 962, 378, 681, 409, 330, 950, 227, 928, 843, 383, 969, 637, 581, 254, 480, 847, 428, 146, 39, 1022, 462, 945, 319, 895, 873, 384, 415, 706, 97, 49, 542, 537, 643, 986, 44, 902, 40, 411, 781, 62, 129, 530, 58, 868, 1021, 508, 993, 71, 678, 46, 196, 400, 698, 56, 540, 917, 551, 239, 96, 194, 526, 635, 774, 897, 467, 1009, 937, 971, 304, 624, 126, 684, 387, 380, 569, 137, 391, 887, 151, 226, 15, 550, 705, 641, 735, 667, 622, 213, 629, 875, 316, 580, 220, 952, 156, 699, 961, 30, 50, 165, 541, 798, 1020, 734, 567, 443, 240, 41, 742, 603, 621, 660, 446, 933, 732, 275, 771, 497, 42, 889, 155, 715, 588, 642, 258, 529, 395, 533, 414, 255, 114, 268, 597, 1007, 179, 32, 16, 613, 837, 386, 543, 982, 124, 591, 476, 317, 779, 346, 176, 976, 725, 489, 205, 616, 184, 162, 169, 589, 331, 944, 970, 294, 575, 509, 507, 501, 947, 831, 617, 243, 503, 905, 888, 491, 170, 675, 410, 224, 647, 358, 714, 379, 232, 538, 20, 692, 609, 65, 17, 292, 762, 286, 744, 157, 502, 918, 869, 512, 493, 963, 288, 578, 340, 672, 748, 178, 668, 1023, 242, 570, 506, 37, 311, 323, 796, 328, 200, 913, 442, 251, 166, 282, 654, 187, 412, 614, 712, 763, 144, 132, 966, 177, 369, 422, 93, 208, 111, 750, 850, 628, 830, 973, 280, 458, 4, 625, 498, 28, 940, 555, 70, 61, 68, 548, 452, 88, 839, 879, 730, 544, 334, 686, 661, 306, 753, 475, 279, 777, 27, 486, 704, 1008, 695, 758, 8, 191, 401, 342, 121, 481, 500, 397, 592, 800, 453, 556, 160, 59, 979, 152, 901, 840, 601, 392, 634, 281, 851, 939, 794, 417, 164, 363, 549, 488, 6, 431, 738, 3, 107, 977, 135, 399, 499, 558, 769, 302, 877, 853, 559, 9, 812, 307, 655, 312, 931, 561, 852, 308, 348, 713, 790, 571, 473, 806, 237, 1006, 585, 927, 747, 720, 345, 885, 859, 914, 236, 999, 899, 22, 673, 14, 269, 449, 81, 447, 404, 256, 347, 882, 954, 246, 377, 95, 368, 185, 274, 577, 189, 759, 201, 248, 638, 78, 707, 757, 63, 123, 815, 666, 924, 389, 618, 247, 234, 80, 915, 836, 527, 605, 427, 721, 903, 664, 112, 33, 285, 925, 72, 857, 435, 955, 620, 834, 964, 876, 450, 736, 615, 690, 159, 594, 780, 470, 606, 445, 244, 573, 154, 825, 333, 891, 960, 623, 994, 958, 632, 314, 842, 86, 878, 910, 468, 554, 669, 355, 671, 685, 464, 278, 864, 305, 610, 708, 416, 479, 373, 183, 301, 1000, 598, 94, 64, 222, 858, 325, 731, 754, 980, 786, 74, 602, 131, 87, 1016, 153, 167, 773, 433, 528, 934, 539, 703, 521, 295, 626, 457, 595, 293, 303, 981, 525, 339, 909, 1004, 767, 180, 367, 429, 865, 718, 190, 710, 12, 861, 737, 273, 381, 768, 109, 34, 116, 724, 353, 394, 496, 253, 906, 846, 382, 291, 991, 327, 862, 723, 711, 665, 608, 743, 653, 354, 656, 987, 419, 149, 989, 670, 818, 134, 371, 988, 810, 811, 425, 98, 801, 761, 808, 700, 694, 920, 375, 472, 351, 880, 424, 517, 770, 148, 957, 490, 53, 487, 426, 361, 297, 728, 886, 147, 663, 459, 133, 141, 916, 332, 7, 215, 402, 145, 31, 560, 688, 211, 55, 640, 782, 289, 784, 679, 161, 776, 702, 545, 233, 230, 122, 680, 25, 24, 434, 262, 908, 844, 437, 209, 1, 911, 604, 997, 826, 765, 652, 370, 438, 1013, 752, 722, 974, 261, 77, 421, 21, 396, 313, 474, 998, 739, 245, 884, 959, 951, 252, 926, 513, 972, 113, 574, 138, 841, 505, 101, 646, 755, 1010, 82, 946, 103, 217, 941, 115, 821, 1014, 894, 650, 259, 448, 2, 79, 192, 175];
+
+        let perm = new Array(permTableSize * 2);
+        let gradP = new Array(permTableSize * 2);
+
+        for(let i = 0; i < permTableSize; i++) {
+            let v;
+            if (i & 1) {
+                v = p[i] ^ (seedSum % permTableSize);
+            } else {
+                v = p[i] ^ (this.random(v) % permTableSize);
+            }
+
+            perm[i] = perm[i + permTableSize] = v;
+            gradP[i] = gradP[i + permTableSize] = grad[v % 12];
+        }
+
+        this.perm = perm;
+        this.gradP = gradP;
+        this.permTableSize = permTableSize;
 
         this.randLookup = {};
-        this.valLookup = {};
+
+        this.settings(1, 1, 1, 1, 1, 1, 1);
+    }
+
+    settings(frequency, roughness, amplitude, persistence, cellSize, octaves, contrast) {
+        this.frequency = frequency;
+        this.roughness = roughness;
+        this.amplitude = amplitude;
+        this.persistence = persistence;
+        this.cellSize = cellSize;
+        this.octaves = octaves;
+        this.contrast = contrast;
+
+        let frequencies = [];
+        let amplitudes = [];
+
+        for (let i = 0; i < octaves; i++) {
+            frequencies[i] = frequency * Math.pow(roughness, i);
+            amplitudes[i] = amplitude * Math.pow(persistence, i);
+        }
+
+        this.amplitudes = amplitudes;
+        this.frequencies = frequencies;
     }
 
     random(seed) {
@@ -1287,1093 +2610,1127 @@ class Perlin {
         return Math.abs(h1 / (h2 ^ h3) * h4) % 1;
     }
 
-    getUnitVector(x, y) {
-        let seed = this.seedSum ^ (x ^ this.perm[x % 512]) ^ (y ^ this.perm[y ^ 512]);
+    randomAngle(seed) {
+        let h1 = 1779033703, h2 = 3144134277,
+            h3 = 1013904242, h4 = 2773480762;
 
-        if (this.randLookup[seed]) {
-            return this.randLookup[seed];
-        } else {
-            let rand = this.random(seed);
-            let x1 = Math.cos(rand * Math.PI * 2);
-            let y1 = Math.sin(rand * Math.PI * 2);
-            this.randLookup[seed] = [x1, y1];
+        h1 = h2 ^ (h1 ^ seed * 597399067);
+        h2 = h3 ^ (h2 ^ seed * 2869860233);
+        h3 = h4 ^ (h3 ^ seed * 951274213);
+        h4 = h1 ^ (h4 ^ seed * 2716044179);
 
-            return [x1, y1]
-        }
-
+        h1 ^= (h2 ^ h3 ^ h4), h2 ^= h1, h3 ^= h1, h4 ^= h1;
+        return Math.abs(h1 / (h2 ^ h3) * h4) % (Math.PI * 2);
     }
 
-    dotProduct(v1, x2, y2) {
+    dot2(v1, x2, y2) {
         return v1[0] * x2 + v1[1] * y2;
     }
 
-    interpolate(val1, val2, weight) {
-        let val = val1 + (val2 - val1) * weight;
-        return val;
+    dot3(v1, x2, y2, z2) {
+        return v1[0] * x2 + v1[1] * y2 + v1[2] * z2;
     }
 
     ease(t) {
-        let t3 = t * t * t;
-        let t4 = t3 * t;
-        let t5 = t4 * t;
-        return 6 * t5 - 15 * t4 + 10 * t3;
+        let t3 = 10 * t * t * t;
+        let t4 = 1.5 * t3 * t;
+        let t5 = 0.4 * t4 * t;
+
+        return t5 - t4 + t3;
     }
 
-    perlin(x, y) {
-        let x1 = Math.floor(x);
-        let y1 = Math.floor(y);
-        let x2 = x1 + 1;
-        let y2 = y1 + 1;
+    perlin(x0, y0) {
+        let frequency = this.frequency;
+        let roughness = this.roughness;
+        let amplitude = this.amplitude;
+        let persistence = this.persistence;
+        let octaves = this.octaves;
+        let cellSize = this.cellSize;
+        let contrast = this.contrast;
+            
+        let gradP = this.gradP;
+        let perm = this.perm;
+        let permTableSize = this.permTableSize;
 
-        let x3 = x - x1;
-        let y3 = y - y1;
-        let x4 = 1 - x3;
-        let y4 = 1 - y3;
+        x0 /= cellSize;
+        y0 /= cellSize;
 
-        let dotProd1 = this.dotProduct(this.getUnitVector(x1, y1), x3, y3);
-        let dotProd2 = this.dotProduct(this.getUnitVector(x2, y1), -x4, y3);
-        let dotProd3 = this.dotProduct(this.getUnitVector(x1, y2), x3, -y4);
-        let dotProd4 = this.dotProduct(this.getUnitVector(x2, y2), -x4, -y4);
-
-        let iP1 = this.interpolate(dotProd1, dotProd2, this.ease(x3));
-        let iP2 = this.interpolate(dotProd3, dotProd4, this.ease(x3));
-        let iP3 = this.interpolate(iP1, iP2, this.ease(y3));
-
-        return iP3;
-    }
-
-    perlinLayered(x, y) {
-        x /= this.cellSize;
-        y /= this.cellSize;
+        let frequencies = this.frequencies;
+        let amplitudes = this.amplitudes;
 
         let val = 0;
+        let offsetSum = 0;
+
+        for (let i = 0; i < octaves; i++) {
+            let frequency1 = frequencies[i];
+
+            let x = Math.abs(x0 * frequency1 + offsetSum);
+            let y = Math.abs(y0 * frequency1 + offsetSum);
+
+            x = x < permTableSize ? x : x % permTableSize;
+            y = y < permTableSize ? y : y % permTableSize;
+    
+            let x1 = ~~x;
+            let y1 = ~~y;
+
+            let x2 = x1 + 1;
+            let y2 = y1 + 1;
+    
+            let x3 = x - x1;
+            let y3 = y - y1;
+            let x4 = x3 - 1;
+            let y4 = y3 - 1;
+
+            let g0 = gradP[perm[x1 + perm[y1]]]; 
+            let g1 = gradP[perm[x2 + perm[y1]]];
+            let g2 = gradP[perm[x1 + perm[y2]]];
+            let g3 = gradP[perm[x2 + perm[y2]]];
+    
+            let dotProd1 = g0[0] * x3 + g0[1] * y3;
+            let dotProd2 = g1[0] * x4 + g1[1] * y3;
+            let dotProd3 = g2[0] * x3 + g2[1] * y4;
+            let dotProd4 = g3[0] * x4 + g3[1] * y4;
+
+            x3 = this.ease(x3);
+            y3 = this.ease(y3);
+
+            let x3_1 = 1 - x3;
+            let y3_1 = 1 - y3;
+            
+            val += (y3_1 * (x3_1 * dotProd1 + x3 * dotProd2) + y3 * (x3_1 * dotProd3 + x3 * dotProd4)) * amplitudes[i];
+
+            offsetSum += 0.72;
+        }
+
+        return val * contrast;
+    }
+
+    perlin3(x0, y0, z0) {
+        let frequency = this.frequency;
+        let roughness = this.roughness;
+        let amplitude = this.amplitude;
+        let persistence = this.persistence;
+        let octaves = this.octaves;
+        let cellSize = this.cellSize;
+        let contrast = this.contrast;
+            
+        let gradP = this.gradP;
+        let perm = this.perm;
+        let permTableSize = this.permTableSize;
+
+        x0 /= cellSize;
+        y0 /= cellSize;
+        z0 /= cellSize;
+
+        let frequencies = this.frequencies;
+        let amplitudes = this.amplitudes;
+
+        let val = 0;
+        let offsetSum = 0;
+
+        for (let i = 0; i < octaves; i++) {
+            let frequency1 = frequencies[i];
+
+            let x = Math.abs(x0 * frequency1 + offsetSum);
+            let y = Math.abs(y0 * frequency1 + offsetSum);
+            let z = Math.abs(z0 * frequency1 + offsetSum);
+
+            x = x < permTableSize ? x : x % permTableSize;
+            y = y < permTableSize ? y : y % permTableSize;
+            z = z < permTableSize ? z : z % permTableSize;
+    
+            let x1 = ~~x;
+            let y1 = ~~y;
+            let z1 = ~~z;
+
+            let x2 = x1 + 1;
+            let y2 = y1 + 1;
+            let z2 = z1 + 1;
+    
+            let x3 = x - x1;
+            let y3 = y - y1;
+            let z3 = z - z1;
+            let x4 = x3 - 1;
+            let y4 = y3 - 1;
+            let z4 = z3 - 1;
+    
+            let dotProd1 = this.dot3(gradP[perm[x1 + perm[y1 + perm[z1]]]], x3, y3, z3);
+            let dotProd2 = this.dot3(gradP[perm[x2 + perm[y1 + perm[z1]]]], x4, y3, z3);
+            let dotProd3 = this.dot3(gradP[perm[x1 + perm[y2 + perm[z1]]]], x3, y4, z3);
+            let dotProd4 = this.dot3(gradP[perm[x2 + perm[y2 + perm[z1]]]], x4, y4, z3);
+    
+            let dotProd5 = this.dot3(gradP[perm[x1 + perm[y1 + perm[z2]]]], x3, y3, z4);
+            let dotProd6 = this.dot3(gradP[perm[x2 + perm[y1 + perm[z2]]]], x4, y3, z4);
+            let dotProd7 = this.dot3(gradP[perm[x1 + perm[y2 + perm[z2]]]], x3, y4, z4);
+            let dotProd8 = this.dot3(gradP[perm[x2 + perm[y2 + perm[z2]]]], x4, y4, z4);
+
+            x3 = this.ease(x3)
+            y3 = this.ease(y3)
+            z3 = this.ease(z3)
+
+            let x3_1 = 1 - x3;
+            let y3_1 = 1 - y3;
+            let z3_1 = 1 - z3;
+            
+            val += (z3_1 * (y3_1 * (x3_1 * dotProd1 + x3 * dotProd2) + y3 * (x3_1 * dotProd3 + x3 * dotProd4)) + z3 * (y3_1 * (x3_1 * dotProd5 + x3 * dotProd6) + y3 * (x3_1 * dotProd7 + x3 * dotProd8))) * amplitudes[i];
+
+            offsetSum += 0.72;
+        }
+
+        return val * contrast;
+    }
+
+    perlinBuffer(width, height, offsetX = 0, offsetY = 0) {
+        let buffer = new Float32Array(width * height);
 
         let frequency = this.frequency;
-        let factor = this.factor;
-
-        for (let i = 0; i < this.octaves; i++) {
-            let x1 = x * frequency + i * 0.72;
-            let y1 = y * frequency + i * 0.72;
-
-            val += this.perlin(x1, y1) * factor;
-
-            frequency *= this.roughness;
-            factor *= this.persistence;
-        }
-
-        return val * this.contrast;
-    }
-}
-
-class Particle2D {
-    constructor(position) {
-        this.position = position;
-        this.prevPosition = position.clone();
-        this.velocity = Vector2.neutral();
-        this.locked = false;
-    }
-
-    lock() {
-        this.locked = !this.locked;
-    }
-
-    force(force) {
-        if (!this.locked) {
-            this.position.add(force);
-        }
-    }
-
-    tick(velocityMax) {
-        if (!this.locked) {
-            let position = this.position;
-            let prevPosition = this.prevPosition;
-
-            let force = position.difference(prevPosition);
-
-            if (velocityMax) {
-                force.capNum(velocityMax);
-            }
-
-            prevPosition.set(position);
-            position.add(force);
-        }
-    }
-}
-
-class VelocityParticle2D {
-    constructor(position) {
-        this.position = position;
-        this.velocity = Vector2.neutral();
-        this.acceleration = Vector2.neutral();
-        this.prevPosition = position.clone();;
-        this.locked = false;
-        this.density = 0;
-    }
-
-    lock() {
-        this.locked = !this.locked;
-    }
-
-    tick() {
-        if (this.locked) {
-            this.velocity.scale(0);
-            this.acceleration.scale(0);
-
-            return;
-        }
-
-        this.prevPosition.set(this.position);
-
-        this.velocity.add(this.acceleration);
-        this.acceleration.scale(0);
-        this.position.add(this.velocity);
-    }
-
-    force(force) {
-        this.acceleration.add(force);
-    }
-}
-
-class ParticleConnection2D {
-    constructor(particleA, particleB, length, rigidity) {
-        this.particleA = particleA;
-        this.particleB = particleB;
-
-        this.length = length;
-        this.rigidity = rigidity;
-    }
-
-    tick() {
-        let length = this.length;
-        let rigidity = this.rigidity;
-
-        let particleA = this.particleA;
-        let particleB = this.particleB;
-
-        let positionA = particleA.position;
-        let positionB = particleB.position;
-
-        let direction = positionA.difference(positionB);
-        let distance = direction.magnitude();
-        direction.scale(1 / distance);
-
-        let moveLength = length - distance;
-        let springForce = moveLength * rigidity * 0.5;
-
-        direction.scale(springForce);
-
-        if (!particleA.locked) {
-            positionA.add(direction);
-        }
-        if (!particleB.locked) {
-            positionB.subtract(direction);
-        }
-    }
-}
-
-class ParticleLooseConnection2D {
-    constructor(particleA, particleB, length) {
-        this.particleA = particleA;
-        this.particleB = particleB;
-
-        this.length = length;
-    }
-
-    tick() {
-        let length = this.length;
-
-        let particleA = this.particleA;
-        let particleB = this.particleB;
-
-        let positionA = particleA.position;
-        let positionB = particleB.position;
-
-        let difference = positionA.difference(positionB);
-        let center = positionA.average(positionB);
-
-        let stickDir = difference.normalised().scaled(length / 2)
-
-        if (!particleA.locked) {
-            positionA.set(center.sum(stickDir));
-        }
-        if (!particleB.locked) {
-            positionB.set(center.difference(stickDir));
-        }
-    }
-}
-
-class RectangleCollider2D {
-    constructor(position, width, height) {
-        this.type = 0;
-        this.position = position;
-        this.width = width;
-        this.height = height;
-    }
-}
-
-class CircleCollider2D {
-    constructor(position, radius) {
-        this.type = 1;
-        this.position = position;
-        this.radius = radius;
-    }
-}
-
-class NullCollider2D {
-    constructor(position) {
-        this.position = position;
-        this.type = -1;
-    }
-}
-
-class MeshSoftbodyPhysicsObject2D {
-    constructor(position, particles, particleConnections, width, height, collisionPadding, numIterations, useCollision) {
-        if (!collisionPadding) {
-            collisionPadding = 0;
-        }
-
-        this.position = position;
-        this.width = width;
-        this.height = height;
-        this.particles = particles;
-        this.particleConnections = particleConnections;
-        this.numIterations = numIterations || 1;
-
-        if (useCollision) {
-            this.collider = new RectangleCollider2D(position, width + collisionPadding, height + collisionPadding);
-        } else {
-            this.collider = new NullCollider2D(position);
-        }
-    }
-
-    setPosition() {
-        let particles = this.particles;
-        let length = particles.length;
-
-        if (length == 0) {
-            return;
-        }
-
-        let avgPosition = Vector2.neutral();
-
-        let minX;
-        let minY;
-        let maxX;
-        let maxY;
-
-        for (let p = 0; p < particles.length; p++) {
-            let particle = particles[p];
-            let position = particle.position;
-
-            avgPosition.add(position);
-
-            if (!minX || position.x < minX) {
-                minX = position.x;
-            } else if (!maxX || position.x > maxX) {
-                maxX = position.x;
-            }
-            if (!minY || position.y < minY) {
-                minY = position.y;
-            } else if (!maxY || position.y > maxY) {
-                maxY = position.y;
-            }
-        }
-
-        this.collider.width = maxX - minX;
-        this.collider.height = maxY - minY;
-
-        this.position.set(avgPosition.scaled(1 / length));
-    }
-
-    applyForce(force) {
-        let particles = this.particles;
-
-        for (let p = 0; p < particles.length; p++) {
-            let particle = particles[p];
-            particle.force(force);
-        }
-    }
-}
-
-class RectangleSoftbodyPhysicsObject2D {
-    constructor(position, rigidity, width, height, numIterations) {
-        if (!collisionPadding) {
-            collisionPadding = 0;
-        }
-
-        this.width = width;
-        this.height = height;
-        this.position = position;
-
-        this.numIterations = numIterations || 1;
-
-        let halfWidth = width / 2;
-        let halfHeight = height / 2;
-
-        let p1 = new Particle2D(new Vector2(position.x + halfWidth, position.y + halfHeight));
-        let p2 = new Particle2D(new Vector2(position.x + halfWidth, position.y - halfHeight));
-        let p3 = new Particle2D(new Vector2(position.x - halfWidth, position.y - halfHeight));
-        let p4 = new Particle2D(new Vector2(position.x - halfWidth, position.y + halfHeight));
-
-        let side1 = new ParticleConnection2D(p1, p2, height, rigidity);
-        let side2 = new ParticleConnection2D(p2, p3, width, rigidity);
-        let side3 = new ParticleConnection2D(p3, p4, height, rigidity);
-        let side4 = new ParticleConnection2D(p4, p1, width, rigidity);
-
-        let crossLength = Math.sqrt(width * width + height * height);
-
-        let cross5 = new ParticleConnection2D(p1, p3, crossLength, rigidity);
-        let cross6 = new ParticleConnection2D(p2, p4, crossLength, rigidity);
-
-        this.particles = [p1, p2, p3, p4];
-        this.particleConnections = [side1, side2, side3, side4, cross5, cross6];
-
-        this.collider = new RectangleCollider2D(this.position, width + collisionPadding, height + collisionPadding);
-    }
-
-    setPosition() {
-        let particles = this.particles;
-        let length = particles.length;
-
-        if (length == 0) {
-            return;
-        }
-
-        let avgPosition = Vector2.neutral();
-
-        for (let p = 0; p < particles.length; p++) {
-            let particle = particles[p];
-
-            avgPosition.add(particle.position);
-        }
-
-        this.position.set(avgPosition.scaled(1 / length));
-    }
-
-    applyForce(force) {
-        let particles = this.particles;
-
-        for (let p = 0; p < particles.length; p++) {
-            let particle = particles[p];
-            particle.force(force);
-        }
-    }
-}
-
-class CircleSoftbodyPhysicsObject2D {
-    constructor(position, rigidity, radius, collisionPadding, numIterations) {
-        if (!collisionPadding) {
-            collisionPadding = 0;
-        }
-
-        this.position = position;
-        this.radius = radius;
-        
-        this.numIterations = numIterations || 1;
-
-        let steps = 8;
-        let crossStep = 3;
-        let numCrosses = steps / crossStep;
-
-        let particles = [];
-        let particleConnections = [];
-
-        let radStep = (Math.PI * 2) / steps;
-        let rads = 0;
-
-        for (let i = 0; i < steps; i++) {
-            let newPos = position.sum(new Vector2(-Math.cos(rads), Math.sin(rads)).scaled(radius));
-            let newParticle = new Particle2D(newPos);
-
-            particles.push(newParticle);
-
-            rads += radStep;
-        }
-
-        for (let i = 0; i < particles.length; i++) {
-            let p1 = particles[i];
-
-            for (let j = 0; j < numCrosses; j++) {
-                let k = (i + (j + 1) * crossStep) % particles.length;
-
-                if (k == i) {
-                    continue;
-                }
-
-                let p2 = particles[k];
-                let newConnection = new ParticleConnection2D(p1, p2, p1.position.distance(p2.position), rigidity);
-                particleConnections.push(newConnection);
-            }
-        }
-
-        this.particles = particles;
-        this.particleConnections = particleConnections;
-
-        this.collider = new CircleCollider2D(this.position, radius + collisionPadding);
-    }
-
-    setPosition() {
-        let particles = this.particles;
-        let length = particles.length;
-
-        if (length == 0) {
-            return;
-        }
-
-        let avgPosition = Vector2.neutral();
-
-        for (let p = 0; p < particles.length; p++) {
-            let particle = particles[p];
-
-            avgPosition.add(particle.position);
-        }
-
-        this.position.set(avgPosition.scaled(1 / length));
-    }
-
-    applyForce(force) {
-        let particles = this.particles;
-
-        for (let p = 0; p < particles.length; p++) {
-            let particle = particles[p];
-            particle.force(force);
-        }
-    }
-}
-
-class RectangleRigidbodyPhysicsObject2D {
-    constructor(position, width, height, collisionPadding) {
-        if (!collisionPadding) {
-            collisionPadding = 0;
-        }
-
-        this.type = 0;
-        this.density = 0;
-        this.position = position;
-        this.width = width;
-        this.height = height;
-        this.particle = new Particle2D(this.position);
-        this.collider = new RectangleCollider2D(this.position, width + collisionPadding, height + collisionPadding);
-    }
-
-    applyForce(force) {
-        this.particle.force(force);
-    }
-}
-
-class CircleRigidbodyPhysicsObject2D {
-    constructor(position, radius, collisionPadding) {
-        if (!collisionPadding) {
-            collisionPadding = 0;
-        }
-
-        this.type = 1;
-        this.density = 0;
-        this.position = position;
-        this.radius = radius;
-        this.particle = new Particle2D(this.position);
-        this.collider = new CircleCollider2D(this.position, this.radius + collisionPadding);
-    }
-
-    applyForce(force) {
-        this.particle.force(force);
-    }
-}
-
-class CollisionDetector2D {
-    collision(collider1, collider2) {
-        let type1 = collider1.type;
-        let type2 = collider2.type;
-
-        switch (type1) {
-            case 0: {
-                switch (type2) {
-                    case 0: {
-                        return this.rectangleRectangleCollision(collider1, collider2);
-                    }
-
-                    case 1: {
-                        return this.circleRectangleCollision(collider1, collider2);
-                    }
-                }
-            }
-            case 1: {
-                switch (type2) {
-                    case 0: {
-                        return this.circleRectangleCollision(collider1, collider2);
-                    }
-
-                    case 1: {
-                        return this.circleCircleCollision(collider1, collider2);
-                    }
-                }
-            }
-        }
-    }
-
-    rectangleRectangleCollision(collider1, collider2) {
-        let difference = collider1.position.difference(collider2.position);
-
-        let combinedWidth = (collider1.width + collider2.width) / 2;
-        let combinedHeight = (collider1.height + collider2.height) / 2;
-
-        if (Math.abs(difference.x) <= combinedWidth && Math.abs(difference.y) <= combinedHeight) {
-            return difference.magnitude();
-        }
-
-        return false;
-    }
-
-    circleCircleCollision(collider1, collider2) {
-        let pos1 = collider1.position;
-        let pos2 = collider2.position;
-
-        let diffX = pos1.x - pos2.x;
-        let diffY = pos1.y - pos2.y;
-        let distance = diffX * diffX + diffY * diffY;
-
-        let combinedRadius = collider1.radius + collider2.radius;
-
-        if (distance <= combinedRadius * combinedRadius) {
-            return Math.sqrt(distance);
-        }
-
-        return false;
-    }
-
-    circleRectangleCollision(circleCollider, rectangleCollider) {
-        let difference = circleCollider.position.difference(rectangleCollider.position);
-
-        let diffX = Math.abs(difference.x);
-        let diffY = Math.abs(difference.y);
-
-        let radius = circleCollider.radius;
-        let halfWidth = rectangleCollider.width / 2;
-        let halfHeight = rectangleCollider.height / 2;
-
-        if (diffX > halfWidth + radius) {
-            return false;
-        }
-        if (diffY > halfHeight + radius) {
-            return false;
-        }
-
-        if (diffX <= halfWidth) {
-            return Math.sqrt(diffX * diffX + diffY * diffY);
-        }
-        if (diffY <= halfHeight) {
-            return Math.sqrt(diffX * diffX + diffY * diffY);
-        }
-
-        let widthOverflow = diffX - halfWidth;
-        let heightOverflow = diffY - halfHeight;
-
-        if (widthOverflow * widthOverflow + heightOverflow * heightOverflow <= radius * radius) {
-            return Math.sqrt(diffX * diffX + diffY * diffY);
-        }
-
-        return false;
-    }
-}
-
-class PhysicsWorld2D {
-    constructor() {
-        this.gravity = Vector2.neutral();
-        this.collisionDampening = -1;
-
-        this.boundingMin = Vector2.neutral();
-        this.boundingMax = Vector2.neutral();
-
-        this.doPrintParticles = true;
-        this.doPrintParticleConnections = true;
-        this.useBounding = false;
-        this.useCollisions = false;
-        this.quadrantSize = 50;
-
-        this.collisionDampening = 1;
-        this.reboundDampening = 0.2;
-        this.friction = 1;
-        this.velocityMax = 2;
-        this.densitySamplingRadius = 15;
-
-        this.physicsObjects = [];
-    }
-
-    setPrintParticles(doPrintParticles) {
-        this.doPrintParticles = doPrintParticles;
-    }
-
-    setPrintParticleConnections(doPrintParticleConnections) {
-        this.doPrintParticleConnections = doPrintParticleConnections;
-    }
-
-    setGravity(gravity) {
-        this.gravity.set(gravity);
-    }
-
-    setCollisionDampening(collisionDampening) {
-        this.collisionDampening = collisionDampening;
-    }
-
-    setReboundDampening(reboundDampening) {
-        this.reboundDampening = reboundDampening;
-    }
-
-    setFriction(friction) {
-        this.friction = friction;
-    }
-
-    setVelocityMax(velocityMax) {
-        this.velocityMax = velocityMax;
-    }
-
-    setQuadrantSize(quadrantSize) {
-        this.quadrantSize = quadrantSize;
-    }
-
-    setDensitySamplingRadius(densitySamplingRadius) {
-        this.densitySamplingRadius = densitySamplingRadius;
-    }
-
-    enableBounding() {
-        this.useBounding = !this.useBounding;
-    }
-
-    enableCollisions() {
-        this.useCollisions = !this.useCollisions;
-    }
-
-    setBoundingBox(boundingMin, boundingMax) {
-        this.boundingMin.set(boundingMin);
-        this.boundingMax.set(boundingMax);
-    }
-
-    addPhysicsObject(physicsObject) {
-        this.physicsObjects.push(physicsObject);
-    }
-
-    circleSegmentIntersection(pX, pY, radius, seg1, seg2) {
-        pX -= seg1.x;
-        pY -= seg1.y;
-
-        let dir = seg1.difference(seg2);
-        let length = dir.magnitude();
-        dir.normalise();
-
-        let b = -(dir.x * pX + dir.y * pY);
-        let c = pX * pX + pY * pY - radius * radius;
-        let descr = b * b - c;
-
-        if (descr > 0) {
-            let descrRoot = Math.sqrt(descr);
-
-            let t1 = b - descrRoot;
-            let t2 = b + descrRoot;
-
-            if (t1 >= -radius && t2 <= length + radius) {
-                return true;
-            }
-        }
-    }
-
-    rectangleRectangleCollision(collider1, collider2) {
-        let difference = collider1.position.difference(collider2.position);
-
-        let combinedWidth = (collider1.width + collider2.width) / 2;
-        let combinedHeight = (collider1.height + collider2.height) / 2;
-
-        if (Math.abs(difference.x) <= combinedWidth && Math.abs(difference.y) <= combinedHeight) {
-            return difference.magnitude();
-        }
-
-        return false;
-    }
-
-    circleCircleCollision(collider1, collider2) {
-        let pos1 = collider1.position;
-        let pos2 = collider2.position;
-
-        let diffX = pos1.x - pos2.x;
-        let diffY = pos1.y - pos2.y;
-        let distance = diffX * diffX + diffY * diffY;
-
-        let combinedRadius = collider1.radius + collider2.radius;
-
-        if (distance <= combinedRadius * combinedRadius) {
-            return Math.sqrt(distance);
-        }
-
-        return false;
-    }
-
-    circleRectangleCollision(circleCollider, rectangleCollider) {
-        let difference = rectangleCollider.position.difference(circleCollider.position);
-
-        let diffX = Math.abs(difference.x);
-        let diffY = Math.abs(difference.y);
-
-        let radius = circleCollider.radius;
-        let halfWidth = rectangleCollider.width / 2;
-        let halfHeight = rectangleCollider.height / 2;
-
-        if (diffX > halfWidth + radius) {
-            return false;
-        }
-        if (diffY > halfHeight + radius) {
-            return false;
-        }
-
-        if (diffX <= halfWidth) {
-            return Math.sqrt(diffX * diffX + diffY * diffY);
-        }
-        if (diffY <= halfHeight) {
-            return Math.sqrt(diffX * diffX + diffY * diffY);
-        }
-
-        let widthOverflow = diffX - halfWidth;
-        let heightOverflow = diffY - halfHeight;
-
-        if (widthOverflow * widthOverflow + heightOverflow * heightOverflow <= radius * radius) {
-            return Math.sqrt(diffX * diffX + diffY * diffY);
-        }
-
-        return false;
-    }
-
-    calculatePhysicsCollisions() {
-        let collisionDampening = this.collisionDampening;
-        let physicsObjects = this.physicsObjects;
-
-        let densitySamplingRadius_2 = this.densitySamplingRadius ** 2;
-
-        for (let p = 0; p < physicsObjects.length; p++) {
-            let sel1 = physicsObjects[p];
-            let collider1 = sel1.collider;
-            let type1 = collider1.type;
-
-            let pos1 = collider1.position;
-            let x1 = pos1.x;
-            let y1 = pos1.y;
-
-            let width1 = 0;
-            let height1 = 0;
-
-            let radius1 = 0;
-
-            if (type1 == 0) {
-                width1 = collider1.width;
-                height1 = collider1.height;
-            } else {
-                radius1 = collider1.radius;
-            }
-
-            let density = 0;
+        let roughness = this.roughness;
+        let amplitude = this.amplitude;
+        let persistence = this.persistence;
+        let octaves = this.octaves;
+        let cellSize = this.cellSize;
+        let contrast = this.contrast;
             
+        let gradP = this.gradP;
+        let perm = this.perm;
+        let permTableSize = this.permTableSize;
 
-            for (let p1 = 0; p1 < physicsObjects.length; p1++) {
-                if (p1 == p) {
-                    continue;
+        let dot2 = this.dot2;
+        let ease = this.ease;
+
+        let frequencies = this.frequencies;
+        let amplitudes = this.amplitudes;
+
+        for (let i = 0; i < width; i++) {
+            for (let j = 0; j < height; j++) {
+                let x0 = (i + offsetX) / cellSize;
+                let y0 = (j + offsetY) / cellSize;
+
+                let index = i + j * width;
+
+                let val = 0;
+                let offsetSum = 0;
+
+                for (let k = 0; k < octaves; k++) {
+                    let frequency1 = frequencies[k];
+
+                    let x = Math.abs(x0 * frequency1 + offsetSum);
+                    let y = Math.abs(y0 * frequency1 + offsetSum);
+
+                    x = x < permTableSize ? x : x % permTableSize;
+                    y = y < permTableSize ? y : y % permTableSize;
+            
+                    let x1 = ~~x;
+                    let y1 = ~~y;
+
+                    let x2 = x1 + 1;
+                    let y2 = y1 + 1;
+            
+                    let x3 = x - x1;
+                    let y3 = y - y1;
+                    let x4 = x3 - 1;
+                    let y4 = y3 - 1;
+
+                    let g0 = gradP[perm[x1 + perm[y1]]]; 
+                    let g1 = gradP[perm[x2 + perm[y1]]];
+                    let g2 = gradP[perm[x1 + perm[y2]]];
+                    let g3 = gradP[perm[x2 + perm[y2]]];
+            
+                    let dotProd1 = g0[0] * x3 + g0[1] * y3;
+                    let dotProd2 = g1[0] * x4 + g1[1] * y3;
+                    let dotProd3 = g2[0] * x3 + g2[1] * y4;
+                    let dotProd4 = g3[0] * x4 + g3[1] * y4;
+
+                    x3 = ease(x3);
+                    y3 = ease(y3);
+
+                    let x3_1 = 1 - x3;
+                    let y3_1 = 1 - y3;
+                    
+                    val += (y3_1 * (x3_1 * dotProd1 + x3 * dotProd2) + y3 * (x3_1 * dotProd3 + x3 * dotProd4)) * amplitudes[k];
+
+                    offsetSum += 0.72;
                 }
 
-                let sel2 = physicsObjects[p1];
-                let collider2 = sel2.collider;
-                let type2 = collider2.type;
+                buffer[index] = val * contrast;
+            }
+        }
 
-                let pos2 = collider2.position;
-                let diffX = x1 - pos2.x;
-                let diffY = y1 - pos2.y;
+        return buffer;
+    }
 
-                let dist_2 = diffX * diffX + diffY * diffY;
+    perlinBuffer3(width, height, z0, offsetX = 0, offsetY = 0) {
+        let buffer = new Float32Array(width * height);
 
-                let doesCollide = false;
+        let frequency = this.frequency;
+        let roughness = this.roughness;
+        let amplitude = this.amplitude;
+        let persistence = this.persistence;
+        let octaves = this.octaves;
+        let cellSize = this.cellSize;
+        let contrast = this.contrast;
+            
+        let gradP = this.gradP;
+        let perm = this.perm;
+        let permTableSize = this.permTableSize;
 
-                if (type1 == 0) {
-                    if (type2 == 0) {
-                        let combinedWidth = (width1 + collider2.width) / 2;
-                        let combinedHeight = (height1 + collider2.height) / 2;
+        let dot3 = this.dot3;
+        let ease = this.ease;
 
-                        if (Math.abs(diffX) <= combinedWidth && Math.abs(diffY) <= combinedHeight) {
-                            doesCollide = Math.sqrt(dist_2);
-                        }
-                    } else if (type2 == 1) {
-                        doesCollide = this.circleRectangleCollision(collider1, collider2);
-                    }
-                } else if (type1 == 1) {
-                    if (type2 == 0) {
-                        doesCollide = this.circleRectangleCollision(collider1, collider2);
-                    } else if (type2 == 1) {
-                        let combinedRadius = radius1 + collider2.radius;
+        z0 /= cellSize;
 
-                        if (dist_2 <= combinedRadius * combinedRadius) {
-                            doesCollide = Math.sqrt(dist_2);
-                        }
-                    }
+        let frequencies = this.frequencies;
+        let amplitudes = this.amplitudes;
+
+        for (let i = 0; i < width; i++) {
+            for (let j = 0; j < height; j++) {
+                let x0 = (i + offsetX) / cellSize;
+                let y0 = (j + offsetY) / cellSize;
+
+                let index = i + j * width;
+
+                let val = 0;
+                let offsetSum = 0;
+
+                for (let k = 0; k < octaves; k++) {
+                    let frequency1 = frequencies[k];
+
+                    let x = Math.abs(x0 * frequency1 + offsetSum);
+                    let y = Math.abs(y0 * frequency1 + offsetSum);
+                    let z = Math.abs(z0 * frequency1 + offsetSum);
+
+                    x = x < permTableSize ? x : x % permTableSize;
+                    y = y < permTableSize ? y : y % permTableSize;
+                    z = z < permTableSize ? z : z % permTableSize;
+            
+                    let x1 = ~~x;
+                    let y1 = ~~y;
+                    let z1 = ~~z;
+
+                    let x2 = x1 + 1;
+                    let y2 = y1 + 1;
+                    let z2 = z1 + 1;
+            
+                    let x3 = x - x1;
+                    let y3 = y - y1;
+                    let z3 = z - z1;
+                    let x4 = x3 - 1;
+                    let y4 = y3 - 1;
+                    let z4 = z3 - 1;
+            
+                    let dotProd1 = dot3(gradP[perm[x1 + perm[y1 + perm[z1]]]], x3, y3, z3);
+                    let dotProd2 = dot3(gradP[perm[x2 + perm[y1 + perm[z1]]]], x4, y3, z3);
+                    let dotProd3 = dot3(gradP[perm[x1 + perm[y2 + perm[z1]]]], x3, y4, z3);
+                    let dotProd4 = dot3(gradP[perm[x2 + perm[y2 + perm[z1]]]], x4, y4, z3);
+            
+                    let dotProd5 = dot3(gradP[perm[x1 + perm[y1 + perm[z2]]]], x3, y3, z4);
+                    let dotProd6 = dot3(gradP[perm[x2 + perm[y1 + perm[z2]]]], x4, y3, z4);
+                    let dotProd7 = dot3(gradP[perm[x1 + perm[y2 + perm[z2]]]], x3, y4, z4);
+                    let dotProd8 = dot3(gradP[perm[x2 + perm[y2 + perm[z2]]]], x4, y4, z4);
+
+                    x3 = ease(x3)
+                    y3 = ease(y3)
+                    z3 = ease(z3)
+
+                    let x3_1 = 1 - x3;
+                    let y3_1 = 1 - y3;
+                    let z3_1 = 1 - z3;
+                    
+                    val += (z3_1 * (y3_1 * (x3_1 * dotProd1 + x3 * dotProd2) + y3 * (x3_1 * dotProd3 + x3 * dotProd4)) + z3 * (y3_1 * (x3_1 * dotProd5 + x3 * dotProd6) + y3 * (x3_1 * dotProd7 + x3 * dotProd8))) * amplitudes[k];
+
+                    offsetSum += 0.72;
                 }
 
-                if (doesCollide) {
-                    let scale = collisionDampening / doesCollide;
+                buffer[index] = val * contrast;
+            }
+        }
 
-                    let direction = new Vector2(diffX * scale, diffY * scale);
+        return buffer;
+    }
 
-                    sel1.applyForce(direction);
-                    sel2.applyForce(direction.scaled(-1));
+    simplex(x, y) {
+        let frequency = this.frequency;
+        let roughness = this.roughness;
+        let amplitude = this.amplitude;
+        let persistence = this.persistence;
+        let octaves = this.octaves;
+        let cellSize = this.cellSize;
+        let contrast = this.contrast;
+            
+        let gradP = this.gradP;
+        let perm = this.perm;
+        let permTableSize = this.permTableSize;
+        let permTableSizeMin1 = permTableSize - 1;
+
+        x /= cellSize;
+        y /= cellSize;
+
+        let frequencies = this.frequencies;
+        let amplitudes = this.amplitudes;
+
+        let F = 0.5 * (Math.sqrt(3) - 1);
+        let G = (3 - Math.sqrt(3)) / 6;
+        let G2 = G * 2 - 1;
+
+        let val = 0;
+        let offsetSum = 0;
+
+        for (let i = 0; i < octaves; i++) {
+            let frequency1 = frequencies[i];
+
+            let xin = Math.abs(x * frequency1 + offsetSum);
+            let yin = Math.abs(y * frequency1 + offsetSum);
+
+            xin = xin < permTableSize ? xin : xin % permTableSize;
+            yin = yin < permTableSize ? yin : yin % permTableSize;
+
+            let n = 0;
+
+            let s = (xin + yin) * F;
+
+            let u = ~~(xin + s);
+            let v = ~~(yin + s);
+
+            let t = (u + v) * G;
+            let x0 = xin - u + t;
+            let y0 = yin - v + t;
+
+            let u1 = 0;
+            let v1 = 0;
+
+            if (x0 > y0) {
+                u1 = 1;
+            } else {
+                v1 = 1;
+            }
+
+            let x1 = x0 - u1 + G;
+            let y1 = y0 - v1 + G;
+            let x2 = x0 + G2;
+            let y2 = y0 + G2;
+
+            u = u < permTableSizeMin1 ? u : u & permTableSizeMin1;
+            v = v < permTableSizeMin1 ? v : v & permTableSizeMin1;
+
+            let t0 = 0.5 - x0 * x0 - y0 * y0;
+            if (t0 >= 0) {
+                let g0 = gradP[perm[u + perm[v]]];
+
+                t0 *= t0;
+                n += t0 * t0 * (g0[0] * x0 + g0[1] * y0);
+            }
+
+            let t1 = 0.5 - x1 * x1 - y1 * y1;
+            if (t1 >= 0) {
+                let g1 = gradP[perm[u + u1 + perm[v + v1]]];
+
+                t1 *= t1;
+                n += t1 * t1 * (g1[0] * x1 + g1[1] * y1);
+            }
+
+            let t2 = 0.5 - x2 * x2 - y2 * y2;
+            if (t2 >= 0) {
+                let g2 = gradP[perm[u + 1 + perm[v + 1]]];
+
+                t2 *= t2;
+                n += t2 * t2 * (g2[0] * x2 + g2[1] * y2);
+            }
+
+            val += n * amplitudes[i];
+
+            offsetSum += 0.72;
+        }
+
+        return val * 70 * contrast;
+    }
+
+    simplex3(x, y, z) {
+        let frequency = this.frequency;
+        let roughness = this.roughness;
+        let amplitude = this.amplitude;
+        let persistence = this.persistence;
+        let octaves = this.octaves;
+        let cellSize = this.cellSize;
+        let contrast = this.contrast;
+            
+        let gradP = this.gradP;
+        let perm = this.perm;
+        let permTableSize = this.permTableSize;
+        let permTableSizeMin1 = permTableSize - 1;
+
+        x /= cellSize;
+        y /= cellSize;
+        z /= cellSize;
+
+        let frequencies = this.frequencies;
+        let amplitudes = this.amplitudes;
+
+        let F = 1 / 3;
+        let G = 1 / 6;
+        let G2 = G * 2;
+        let G3 = G * 3 - 1;
+
+        let val = 0;
+        let offsetSum = 0;
+
+        for (let i = 0; i < octaves; i++) {
+            let frequency1 = frequencies[i];
+
+            let xin = Math.abs(x * frequency1 + offsetSum);
+            let yin = Math.abs(y * frequency1 + offsetSum);
+            let zin = Math.abs(z * frequency1 + offsetSum);
+
+            xin = xin < permTableSize ? xin : xin % permTableSize;
+            yin = yin < permTableSize ? yin : yin % permTableSize;
+            zin = zin < permTableSize ? zin : zin % permTableSize;
+
+            let n = 0;
+
+            let s = (xin + yin + zin) * F;
+
+            let u = ~~(xin + s);
+            let v = ~~(yin + s);
+            let w = ~~(zin + s);
+
+            let t = (u + v + w) * G;
+            let x0 = xin - u + t;
+            let y0 = yin - v + t;
+            let z0 = zin - w + t;
+
+            let u1 = 0;
+            let v1 = 0;
+            let w1 = 0;
+            let u2 = 0;
+            let v2 = 0;
+            let w2 = 0;
+
+            if (x0 >= y0) {
+                if (y0 >= z0) { 
+                    u1 = 1;
+                    u2 = 1; 
+                    v2 = 1;
+                } else if (x0 >= z0) { 
+                    u1 = 1;
+                    u2 = 1; 
+                    w2 = 1; 
+                } else { 
+                    w1 = 1; 
+                    u2 = 1; 
+                    w2 = 1; 
                 }
-
-                if (dist_2 < densitySamplingRadius_2) {
-                    density++;
+            } else {
+                if (y0 < z0) { 
+                    w1 = 1; 
+                    v2 = 1; 
+                    w2 = 1; 
+                } else if (x0 < z0) { 
+                    v1 = 1;
+                    v2 = 1; 
+                    w2 = 1; 
+                } else { 
+                    v1 = 1; 
+                    u2 = 1; 
+                    v2 = 1;
                 }
             }
 
-            sel1.density = density;
+            let x1 = x0 - u1 + G;
+            let y1 = y0 - v1 + G;
+            let z1 = z0 - w1 + G;
+            let x2 = x0 - u2 + G2;
+            let y2 = y0 - v2 + G2;
+            let z2 = z0 - w2 + G2;
+            let x3 = x0 + G3;
+            let y3 = y0 + G3;
+            let z3 = z0 + G3;
+
+            u = u < permTableSizeMin1 ? u : u & permTableSizeMin1;
+            v = v < permTableSizeMin1 ? v : v & permTableSizeMin1;
+            w = w < permTableSizeMin1 ? w : w & permTableSizeMin1;
+
+            let t0 = 0.5 - x0 * x0 - y0 * y0 - z0 * z0;
+            if (t0 >= 0) {
+                let g0 = gradP[perm[u + perm[v + perm[w]]]];
+
+                t0 *= t0;
+                n += t0 * t0 * (g0[0] * x0 + g0[1] * y0 + g0[2] * z0);
+            }
+
+            let t1 = 0.5 - x1 * x1 - y1 * y1 - z1 * z1;
+            if (t1 >= 0) {
+                let g1 = gradP[perm[u + u1 + perm[v + v1 + perm[w + w1]]]];
+
+                t1 *= t1;
+                n += t1 * t1 * (g1[0] * x1 + g1[1] * y1 + g1[2] * z1);
+            }
+
+            let t2 = 0.5 - x2 * x2 - y2 * y2 - z2 * z2;
+            if (t2 >= 0) {
+                let g2 = gradP[perm[u + u2 + perm[v + v2 + perm[w + w2]]]];
+
+                t2 *= t2;
+                n += t2 * t2 * (g2[0] * x2 + g2[1] * y2 + g2[2] * z2);
+            }
+
+            let t3 = 0.5 - x3 * x3 - y3 * y3 - z3 * z3;
+            if (t3 >= 0) {
+                let g3 = gradP[perm[u + 1 + perm[v + 1 + perm[w + 1]]]];
+
+                t3 *= t3;
+                n += t3 * t3 * (g3[0] * x3 + g3[1] * y3 + g3[2] * z3);
+            }
+
+            val += n * amplitudes[i];
+
+            offsetSum += 0.72;
         }
+
+        return val * 32 * contrast;
+    }
+
+    simplexBuffer(width, height, offsetX = 0, offsetY = 0) {
+        let buffer = new Float32Array(width * height);
+
+        let frequency = this.frequency;
+        let roughness = this.roughness;
+        let amplitude = this.amplitude;
+        let persistence = this.persistence;
+        let octaves = this.octaves;
+        let cellSize = this.cellSize;
+        let contrast = this.contrast;
+            
+        let gradP = this.gradP;
+        let perm = this.perm;
+        let permTableSize = this.permTableSize;
+        let permTableSizeMin1 = permTableSize - 1;
+
+        let dot2 = this.dot2;
+
+        let frequencies = this.frequencies;
+        let amplitudes = this.amplitudes;
+
+        let F = 0.5 * (Math.sqrt(3) - 1);
+        let G = (3 - Math.sqrt(3)) / 6;
+        let G2 = G * 2 - 1;
+
+        contrast *= 70;
+
+        for (let i = 0; i < width; i++) {
+            for (let j = 0; j < height; j++) {
+                let x = (i + offsetX) / cellSize;
+                let y = (j + offsetY) / cellSize;
+
+                let index = i + j * width;
+
+                let val = 0;
+                let offsetSum = 0;
+
+                for (let k = 0; k < octaves; k++) {
+                    let frequency1 = frequencies[k];
+                    let amplitude1 = amplitudes[k];
+
+                    let xin = Math.abs(x * frequency1 + offsetSum);;
+                    let yin = Math.abs(y * frequency1 + offsetSum);;
+
+                    xin = xin < permTableSize ? xin : xin % permTableSize;
+                    yin = yin < permTableSize ? yin : yin % permTableSize;
+
+                    let n = 0;
+
+                    let s = (xin + yin) * F;
+
+                    let u = ~~(xin + s);
+                    let v = ~~(yin + s);
+
+                    let t = (u + v) * G;
+                    let x0 = xin - u + t;
+                    let y0 = yin - v + t;
+
+                    let u1 = 0;
+                    let v1 = 0;
+
+                    if (x0 > y0) {
+                        u1 = 1;
+                    } else {
+                        v1 = 1;
+                    }
+
+                    let x1 = x0 - u1 + G;
+                    let y1 = y0 - v1 + G;
+                    let x2 = x0 + G2;
+                    let y2 = y0 + G2;
+
+                    u &= permTableSizeMin1;
+                    v &= permTableSizeMin1;
+
+                    let t0 = 0.5 - x0 * x0 - y0 * y0;
+                    if (t0 >= 0) {
+                        let g0 = gradP[perm[u + perm[v]]];
+
+                        t0 *= t0;
+                        n += t0 * t0 * (g0[0] * x0 + g0[1] * y0);
+                    }
+
+                    let t1 = 0.5 - x1 * x1 - y1 * y1;
+                    if (t1 >= 0) {
+                        let g1 = gradP[perm[u + u1 + perm[v + v1]]];
+
+                        t1 *= t1;
+                        n += t1 * t1 * (g1[0] * x1 + g1[1] * y1);
+                    }
+
+                    let t2 = 0.5 - x2 * x2 - y2 * y2;
+                    if (t2 >= 0) {
+                        let g2 = gradP[perm[u + 1 + perm[v + 1]]];
+
+                        t2 *= t2;
+                        n += t2 * t2 * (g2[0] * x2 + g2[1] * y2);
+                    }
+
+                    val += n * amplitude1;
+
+                    offsetSum += 0.72;
+                }
+
+                buffer[index] = val * contrast;
+            }
+        }
+
+        return buffer;
+    }
+
+    simplexBuffer3(width, height, z, offsetX = 0, offsetY = 0) {
+        let buffer = new Float32Array(width * height);
+
+        let frequency = this.frequency;
+        let roughness = this.roughness;
+        let amplitude = this.amplitude;
+        let persistence = this.persistence;
+        let octaves = this.octaves;
+        let cellSize = this.cellSize;
+        let contrast = this.contrast;
+            
+        let gradP = this.gradP;
+        let perm = this.perm;
+        let permTableSize = this.permTableSize;
+        let permTableSizeMin1 = permTableSize - 1;
+
+        let dot3 = this.dot3;
+
+        z /= cellSize;
+
+        let frequencies = this.frequencies;
+        let amplitudes = this.amplitudes;
+
+        let F = 1 / 3;
+        let G = 1 / 6;
+
+        let G2 = G * 2;
+        let G3 = G * 3 - 1;
+
+        contrast *= 32;
+
+        for (let i = 0; i < width; i++) {
+            for (let j = 0; j < height; j++) {
+                let x = (i + offsetX) / cellSize;
+                let y = (j + offsetY) / cellSize;
+
+                let index = i + j * width;
+
+                let val = 0;
+                let offsetSum = 0;
+
+                for (let k = 0; k < octaves; k++) {
+                    let frequency1 = frequencies[k];
+
+                    let xin = Math.abs(x * frequency1 + offsetSum);
+                    let yin = Math.abs(y * frequency1 + offsetSum);
+                    let zin = Math.abs(z * frequency1 + offsetSum);
+
+                    xin = xin < permTableSize ? xin : xin % permTableSize;
+                    yin = yin < permTableSize ? yin : yin % permTableSize;
+                    zin = zin < permTableSize ? zin : zin % permTableSize;
+        
+                    let n = 0;
+        
+                    let s = (xin + yin + zin) * F;
+        
+                    let u = ~~(xin + s);
+                    let v = ~~(yin + s);
+                    let w = ~~(zin + s);
+        
+                    let t = (u + v + w) * G;
+                    let x0 = xin - u + t;
+                    let y0 = yin - v + t;
+                    let z0 = zin - w + t;
+        
+                    let u1 = 0;
+                    let v1 = 0;
+                    let w1 = 0;
+                    let u2 = 0;
+                    let v2 = 0;
+                    let w2 = 0;
+        
+                    if (x0 >= y0) {
+                        if (y0 >= z0) { 
+                            u1 = 1;
+                            u2 = 1; 
+                            v2 = 1;
+                        } else if (x0 >= z0) { 
+                            u1 = 1;
+                            u2 = 1; 
+                            w2 = 1; 
+                        } else { 
+                            w1 = 1; 
+                            u2 = 1; 
+                            w2 = 1; 
+                        }
+                    } else {
+                        if (y0 < z0) { 
+                            w1 = 1; 
+                            v2 = 1; 
+                            w2 = 1; 
+                        } else if (x0 < z0) { 
+                            v1 = 1;
+                            v2 = 1; 
+                            w2 = 1; 
+                        } else { 
+                            v1 = 1; 
+                            u2 = 1; 
+                            v2 = 1;
+                        }
+                    }
+        
+                    let x1 = x0 - u1 + G;
+                    let y1 = y0 - v1 + G;
+                    let z1 = z0 - w1 + G;
+                    let x2 = x0 - u2 + G2;
+                    let y2 = y0 - v2 + G2;
+                    let z2 = z0 - w2 + G2;
+                    let x3 = x0 + G3;
+                    let y3 = y0 + G3;
+                    let z3 = z0 + G3;
+        
+                    u = u < permTableSizeMin1 ? u : u & permTableSizeMin1;
+                    v = v < permTableSizeMin1 ? v : v & permTableSizeMin1;
+                    w = w < permTableSizeMin1 ? w : w & permTableSizeMin1;
+        
+                    let t0 = 0.5 - x0 * x0 - y0 * y0 - z0 * z0;
+                    if (t0 >= 0) {
+                        let g0 = gradP[perm[u + perm[v + perm[w]]]];
+
+                        t0 *= t0;
+                        n += t0 * t0 * (g0[0] * x0 + g0[1] * y0 + g0[2] * z0);
+                    }
+        
+                    let t1 = 0.5 - x1 * x1 - y1 * y1 - z1 * z1;
+                    if (t1 >= 0) {
+                        let g1 = gradP[perm[u + u1 + perm[v + v1 + perm[w + w1]]]];
+
+                        t1 *= t1;
+                        n += t1 * t1 * (g1[0] * x1 + g1[1] * y1 + g1[2] * z1);
+                    }
+        
+                    let t2 = 0.5 - x2 * x2 - y2 * y2 - z2 * z2;
+                    if (t2 >= 0) {
+                        let g2 = gradP[perm[u + u2 + perm[v + v2 + perm[w + w2]]]];
+
+                        t2 *= t2;
+                        n += t2 * t2 * (g2[0] * x2 + g2[1] * y2 + g2[2] * z2);
+                    }
+        
+                    let t3 = 0.5 - x3 * x3 - y3 * y3 - z3 * z3;
+                    if (t3 >= 0) {
+                        let g3 = gradP[perm[u + 1 + perm[v + 1 + perm[w + 1]]]];
+
+                        t3 *= t3;
+                        n += t3 * t3 * (g3[0] * x3 + g3[1] * y3 + g3[2] * z3);
+                    }
+        
+                    val += n * amplitudes[k];
+        
+                    offsetSum += 0.72;
+                }
+
+                buffer[index] = val * contrast;
+            }
+        }
+
+        return buffer;
     }
 }
 
-class SoftbodyPhysicsWorld2D extends PhysicsWorld2D {
-    tick() {
-        this.tickPhysicsObjects();
-
-        if (this.useCollisions) {
-            this.calculatePhysicsCollisions();;
-        }
+class RGBA {
+    constructor(r, g, b, a) {
+        this.r = ~~r;
+        this.g = ~~g;
+        this.b = ~~b;
+        this.a = ~~a;
     }
 
-    tickPhysicsObjects() {
-        let gravity = this.gravity;
-        let useBounding = this.useBounding;
-        let physicsObjects = this.physicsObjects;
-        let velocityMax = this.velocityMax;
-        let reboundDampening = this.reboundDampening;
-
-        let boundingMin = this.boundingMin;
-        let boundingMax = this.boundingMax;
-
-        let bMinX = boundingMin.x;
-        let bMinY = boundingMin.y;
-        let bMaxX = boundingMax.x;
-        let bMaxY = boundingMax.y;
-
-        for (let pO = 0; pO < physicsObjects.length; pO++) {
-            let physicsObject = physicsObjects[pO];
-
-            let particles = physicsObject.particles;
-            let particleConnections = physicsObject.particleConnections;
-
-            for (let p = 0; p < particles.length; p++) {
-                let particle = particles[p];
-
-                particle.force(gravity);
-                particle.tick();
-
-                if (useBounding) {
-                    let prevPosition = particle.prevPosition;
-                    let position = particle.position;
-    
-                    let pX = position.x;
-                    let pY = position.y;
-    
-                    let reboundVector;
-    
-                    if (pX < bMinX) {
-                        position.x = bMinX;
-                        reboundVector = Vector2.right();
-                    } else if (pX > bMaxX) {
-                        position.x = bMaxX;
-                        reboundVector = Vector2.right();
-                    }
-                    if (pY < bMinY) {
-                        position.y = bMinY;
-                        reboundVector = Vector2.up();
-                    } else if (pY > bMaxY) {
-                        position.y = bMaxY;
-                        reboundVector = Vector2.up();
-                    }
-    
-                    if (reboundVector) {
-                        let velocity = reboundVector.product(position.difference(prevPosition)).scaled(reboundDampening);
-                        velocity.capNum(velocityMax);
-                        particle.force(velocity);
-                    }
-                }
-            }
-
-            for (let i = 0; i < physicsObject.numIterations; i++) {
-                for (let pC = 0; pC < particleConnections.length; pC++) {
-                    let particleConnection = particleConnections[pC];
-    
-                    particleConnection.tick();
-                }
-            }
-
-            physicsObject.setPosition();
-        }
+    static white() {
+        return new RGBA(255, 255, 255, 255);
     }
 
-    print(ctx, size) {
-        this.printPhysicsObjects(ctx, size);
+    static black() {
+        return new RGBA(0, 0, 0, 255);
     }
 
-    printPhysicsObjects(ctx, size) {
-        let halfSize = size / 2;
-        let physicsObjects = this.physicsObjects;
-        let doPrintParticles = this.doPrintParticles;
-        let doPrintParticleConnections = this.doPrintParticleConnections;
+    static opacity(opacity) {
+        return new RGBA(255, 255, 255, opacity);
+    }
 
-        for (let pO = 0; pO < physicsObjects.length; pO++) {
-            let physicsObject = physicsObjects[pO];
+    static brightness(brightness) {
+        return new RGBA(brightness, brightness, brightness, 255);
+    }
 
-            let particles = physicsObject.particles;
-            let particleConnections = physicsObject.particleConnections;
+    static value(value) {
+        return new RGBA(value, value, value, value);
+    }
 
-            if (doPrintParticles) {
-                for (let p = 0; p < particles.length; p++) {
-                    let particle = particles[p];
-                    let position = particle.position;
+    toString() {
+        return `rgba(${this.r}, ${this.g}, ${this.b}, ${this.a / 255})`;
+    }
+    
+    arr() {
+        return [this.r, this.g, this.b, this.a];
+    }
 
-                    ctx.fillRect(position.x - halfSize, position.y - halfSize, size, size);
-                }
-            }
+    clone() {
+        return new RGBA(this.r, this.g, this.b, this.a);
+    }
 
-            if (doPrintParticleConnections) {
-                ctx.beginPath();
+    toVector4() {
+        return new Vector4(this.r, this.g, this.b, this.a);
+    }
 
-                for (let pC = 0; pC < particleConnections.length; pC++) {
-                    let particleConnection = particleConnections[pC];
+    add(rgba2) {
+        this.r += rgba2.r;
+        this.g += rgba2.g;
+        this.b += rgba2.b;
+        this.a += rgba2.a;
+    }
 
-                    let pos1 = particleConnection.particleA.position;
-                    let pos2 = particleConnection.particleB.position;
+    subtract(rgba2) {
+        this.r -= rgba2.r;
+        this.g -= rgba2.g;
+        this.b -= rgba2.b;
+        this.a -= rgba2.a;
+    }
 
-                    ctx.moveTo(pos1.x, pos1.y);
-                    ctx.lineTo(pos2.x, pos2.y);
-                }
+    multiply(rgba2) {
+        this.r *= rgba2.r;
+        this.g *= rgba2.g;
+        this.b *= rgba2.b;
+        this.a *= rgba2.a;
+    }
 
-                ctx.stroke();
-            }
-        }
+    divide(rgba2) {
+        this.r /= rgba2.r;
+        this.g /= rgba2.g;
+        this.b /= rgba2.b;
+        this.a /= rgba2.a;
+    }
+
+    sum(rgba2) {
+        return new RGBA(this.r + rgba2.r, this.g + rgba2.g, this.b + rgba2.b, this.a + rgba2.a);
+    }
+
+    difference(rgba2) {
+        return new RGBA(this.r - rgba2.r, this.g - rgba2.g, this.b - rgba2.b, this.a - rgba2.a);
+    }
+
+    product(rgba2) {
+        return new RGBA(this.r * rgba2.r, this.g * rgba2.g, this.b * rgba2.b, this.a * rgba2.a);
+    }
+
+    quotient(rgba2) {
+        return new RGBA(this.r / rgba2.r, this.g / rgba2.g, this.b / rgba2.b, this.a / rgba2.a);
+    }
+
+    scale(scalar) {
+        this.r *= scalar;
+        this.g *= scalar;
+        this.b *= scalar;
+        this.a *= scalar;
+    }
+
+    scaled(scalar) {
+        return new RGBA(this.r * scalar, this.g * scalar, this.b * scalar, this.a * scalar);
+    }
+
+    mix(rgba2, weight) {
+        let r = this.r + (this.r - rgba2.r) * weight;
+        let g = this.g + (this.g - rgba2.g) * weight;
+        let b = this.b + (this.b - rgba2.b) * weight;
+        let a = this.a + (this.a - rgba2.a) * weight;
+
+        return new RGBA(r, g, b, a);
     }
 }
 
-class RigidbodyPhysicsWorld2D extends PhysicsWorld2D {
-    tick() {
-        this.tickPhysicsObjects();
+class Texture2D {
+    constructor(width, height, buffer) {
+        this.width = width;
+        this.height = height;
+        
+        this.dimensions = new Vector2(width, height);
 
-        if (this.useCollisions) {
-            this.calculatePhysicsCollisions();
+        if (typeof buffer[0] == "object") {
+            this.setBuffer(buffer);
+        } else {
+            this.setBufferComponents(buffer);
         }
     }
 
-    tickPhysicsObjects() {
-        let gravity = this.gravity;
-        let reboundDampening = this.reboundDampening;
-        let useBounding = this.useBounding;
-        let physicsObjects = this.physicsObjects;
-        let velocityMax = this.velocityMax;
+    setBuffer(buffer) {
+        let newBuffer = [];
 
-        let topRight = this.boundingMax;
-        let bottomLeft = this.boundingMin;
+        for (let i = 0; i < this.width; i++) {
+            for (let j = 0; j < this.height; j++) {
+                let index = i + j * this.width;
 
-        let bMinX = bottomLeft.x;
-        let bMinY = bottomLeft.y;
-        let bMaxX = topRight.x;
-        let bMaxY = topRight.y;
-
-        for (let pO = 0; pO < physicsObjects.length; pO++) {
-            let physicsObject = physicsObjects[pO];
-            let particle = physicsObject.particle;
-
-            particle.force(gravity);
-            particle.tick(velocityMax);
-
-            if (useBounding) {
-                let prevPosition = particle.prevPosition;
-                let position = particle.position;
-                let type = physicsObject.type;
-
-                let pX = position.x;
-                let pY = position.y;
-
-                let reboundVector;
-
-                let sizeX;
-                let sizeY;
-
-                if (type == 0) {
-                    sizeX = physicsObject.width;
-                    sizeY = physicsObject.height;
-                } else if (type == 1) {
-                    sizeX = physicsObject.radius;
-                    sizeY = physicsObject.radius;
-                }
-
-                if (pX < bMinX + sizeX) {
-                    position.x = bMinX + sizeX;
-                    reboundVector = Vector2.right();
-                } else if (pX > bMaxX - sizeX) {
-                    position.x = bMaxX - sizeX;
-                    reboundVector = Vector2.right();
-                }
-                if (pY < bMinY + sizeY) {
-                    position.y = bMinY + sizeY;
-                    reboundVector = Vector2.positive();
-                } else if (pY > bMaxY - sizeY) {
-                    position.y = bMaxY - sizeY;
-                    reboundVector = Vector2.positive();
-                }
-    
-                if (reboundVector) {
-                    let velocity = reboundVector.product(position.difference(prevPosition)).scaled(reboundDampening);
-                    velocity.capNum(velocityMax);
-                    physicsObject.applyForce(velocity);
+                if (index > buffer.length) {
+                    newBuffer[index] = RGBA.white();
+                } else {
+                    newBuffer[index] = buffer[index];
                 }
             }
         }
+
+        this.buffer = newBuffer;
+        this.bufferLength = newBuffer.length;
     }
 
-    print(ctx, size) {
-        this.printPhysicsObjects(ctx, size);
-    }
+    setBufferComponents(buffer) {
+        let newBuffer = [];
 
-    printPhysicsObjects(ctx) {
-        let physicsObjects = this.physicsObjects;
+        for (let i = 0; i < this.width; i++) {
+            for (let j = 0; j < this.height; j++) {
+                let index = (i + j * this.width) * 4;
 
-        let r1 = 255;
-        let g1 = 255;
-        let b1 = 255;
-        let r2 = 50;
-        let g2 = 50;
-        let b2 = 255;
-
-        let rDiff = (r2 - r1);
-        let gDiff = (g2 - g1);
-        let bDiff = (b2 - b1);
-
-        for (let pO = 0; pO < physicsObjects.length; pO++) {
-            let physicsObject = physicsObjects[pO];
-            let type = physicsObject.type;
-            let position = physicsObject.position;
-
-            let density = physicsObject.density;
-
-            let percent = density / 10;
-
-            let r = r1 + rDiff * percent;
-            let g = g1 + gDiff * percent;
-            let b = b1 + bDiff * percent;
-
-            ctx.strokeStyle = `rgb(${r},${g},${b})`;
-
-            switch (type) {
-                case 0: {
-                    let width = physicsObject.width;
-                    let height = physicsObject.height;
-                    ctx.strokeRect(position.x, position.y, width, height);
-                }
-                case 1: {
-                    ctx.beginPath();
-                    ctx.arc(position.x, position.y, physicsObject.radius, 0, Math.PI * 2, false);
-                    ctx.stroke();
+                if (index > buffer.length) {
+                    newBuffer[index] = RGBA.white();
+                } else {
+                    let r = buffer[index + 0];
+                    let g = buffer[index + 1];
+                    let b = buffer[index + 2];
+                    let a = buffer[index + 3]
+                    
+                    newBuffer[index / 4] = new RGBA(r, g, b, a);
                 }
             }
         }
+
+        this.buffer = newBuffer;
+        this.bufferLength = newBuffer.length;
+    }
+
+    uv(uv) {
+        let coord = uv.product(this.dimensions).fastFloored();
+
+        let index = Math.abs(coord.x + coord.y * this.width) % this.bufferLength;
+
+        if (!index) {
+            index = 0;
+        }
+
+        return this.buffer[index];
+    }
+
+    uvComponents(u, v) {
+        u = ~~(u * this.width);
+        v = ~~(v * this.height);
+
+        let index = Math.abs(u + v * this.width) % this.bufferLength;
+
+        if (!index) {
+            index = 0;
+        }
+
+        return this.buffer[index];
+    }
+
+    xy(xy) {
+        let coord = xy.floored();
+
+        let index = coord.x + coord.y * this.width;
+
+
+        return this.buffer[index % this.bufferLength] || RGBA.white();
+    }
+}
+
+class Math2 {
+    static TAU = Math.PI * 2;
+
+    static degreesToRadians(degrees) {
+        return degrees * Math.PI / 180;
+    }
+
+    static radiansToDegrees(radians) {
+        return radians * 180 / Math.PI;
+    }
+
+    static clamp(value, min, max) {
+        return Math.max(Math.min(value, max), min);
+    }
+
+    static map(value, iMin, iMax, eMin, eMax) {
+          return ((value - iMin) / (iMax - iMin)) * (eMax - eMin) + eMin;
+    }
+}
+
+class MouseListener {
+    constructor(target, {mousedown = () => {}, mousemove = () => {}, mouseup = () => {}, mouseenter = () => {}, mouseleave = () => {}}) {
+        this.target = target;
+
+        this.mousedown = mousedown;
+        this.mousemove = mousemove;
+        this.mouseup = mouseup;
+        this.mouseenter = mouseenter;
+        this.mouseleave = mouseleave;
+
+        this.setup();
+    }
+
+    setup() {
+        this.target.addEventListener('mousedown', this.mousedown);
+        this.target.addEventListener('mousemove', this.mousemove);
+        this.target.addEventListener('mouseup', this.mouseup);
+        this.target.addEventListener('mouseenter', this.mouseup);
+        this.target.addEventListener('mouseleave', this.mouseup);
+    }
+
+    setListeners({mousedown = this.mousedown, mousemove = this.mousemove, mouseup = this.mouseup, mouseenter = this.mouseenter, mouseleave = this.mouseleave}) {
+        this.mousedown = mousedown;
+        this.mousemove = mousemove;
+        this.mouseup = mouseup;
+        this.mouseenter = mouseenter;
+        this.mouseleave = mouseleave;
+    }
+}
+
+class KeyboardListener {
+    constructor(target, {keydown = () => {}, keypress = () => {}, keyup = () => {}}) {
+        this.target = target;
+        
+        this.keydown = keydown;
+        this.keypress = keypress;
+        this.keyup = keyup;
+
+        this.setup();
+    }
+
+    setup() {
+        this.target.addEventListener('keydown', this.keydown);
+        this.target.addEventListener('keypress', this.keypress);
+        this.target.addEventListener('keyup', this.keyup);
+    }
+
+    setListeners({keydown = this.keydown, keypress = this.keypress, keyup = this.keyup}) {
+        this.keydown = keydown;
+        this.keypress = keypress;
+        this.keyup = keyup;
     }
 }
