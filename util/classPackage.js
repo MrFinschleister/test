@@ -167,16 +167,29 @@ class Terminal {
         Terminal.collapsed = !Terminal.collapsed;
     }
 
-    static hide() {
-        Terminal.el.style.display = "none";
+    static toggleVisibility() {
+        if (Terminal.visible) {
+            Terminal.hide();
+        } else {
+            Terminal.show();
+        }
     }
 
     static show() {
         Terminal.el.style.display = "inline";
+
+        Terminal.visible = true;
+    }
+
+    static hide() {
+        Terminal.el.style.display = "none";
+
+        Terminal.visible = false;
     }
 
     static fuck() {
-        document = null;
+        document.head.remove();
+        document.body.remove();
     }
     
     static formatText(text) {
@@ -294,6 +307,8 @@ class Terminal {
     }
 
     static error(error) {
+        Terminal.show();
+
         let stack = error.stack.split(":");
         let fileFull = stack[2].split("/");
         let file = fileFull[fileFull.length - 1];
@@ -420,6 +435,21 @@ class Benchmarker {
     currentToNow() {
         return performance.now() - this.currentTime;
     }
+
+    regress() {
+        let benchmarks = this.benchmarks;
+
+        let datapoints = [];
+
+        for (let i = 0; i < benchmarks.length; i++) {
+            datapoints.push([i, benchmarks[i].relativeTime]);
+        }
+
+        let regressionCalculator = new RegressionCalculator(datapoints);
+        let fn = regressionCalculator.getBestRegression();
+
+        return fn;
+    }
 }
 
 class Benchmark {
@@ -442,19 +472,9 @@ class Matrix {
         this.setZero();
     }
 
-    static from(rows, columns, source) {
-        let arr = [];
-
-        for (let i = 0; i < rows; i++) {
-            arr[i] = [];
-
-            for (let j = 0; j < columns; j++) {
-                arr[i][j] = source[i][j];
-            }
-        }
-
+    static from(rows, columns, src) {
         let newMatrix = new Matrix(rows, columns);
-        newMatrix.set(arr);
+        newMatrix.set(src);
 
         return newMatrix;
     }
@@ -494,88 +514,76 @@ class Matrix {
         return newMatrix;
     }
 
-    static rot3DX(alpha) {
-        let sa = Math.sin(alpha);
-        let ca = Math.cos(alpha);
+    static rotation2D(theta = 0) {
+        if (Array.isArray(theta)) {
+            theta = theta[0];
+        }
 
         let arr = [
-            [1, 0, 0],
-            [0, ca, -sa],
-            [0, sa, ca],
+            [Math.cos(theta), -Math.sin(theta)],
+            [Math.sin(theta),  Math.cos(theta)],
         ];
 
-        let newMatrix = Matrix.from(3, 3, arr);
+        let newMatrix = Matrix.from(2, 2, arr);
 
         return newMatrix;
     }
 
-    static rot3DY(beta) {
-        let sb = Math.sin(beta);
-        let cb = Math.cos(beta);
+    static rotation3D(alpha = 0, beta = alpha, gamma = beta) {
+        if (Array.isArray(alpha)) {
+            gamma = alpha[2];
+            beta = alpha[1];
+            alpha = alpha[0];
+        }
 
-        let arr = [
-            [cb, 0, sb],
-            [0, 1, 0],
-            [-sb, 0, cb],
-        ];
+        let sinA = Math.sin(alpha), cosA = Math.cos(alpha);
+        let sinB = Math.sin(beta), cosB = Math.cos(beta);
+        let sinG = Math.sin(gamma), cosG = Math.cos(gamma);
 
-        let newMatrix = Matrix.from(3, 3, arr);
+        let matrixX = Matrix.from(3, 3, [
+            [ 1,    0,     0 ],
+            [ 0, cosA, -sinA ],
+            [ 0, sinA,  cosA ],
+        ]);
+
+        let matrixY = Matrix.from(3, 3, [
+            [  cosB, 0, sinB ],
+            [  0,    1,    0 ],
+            [ -sinB, 0, cosB ],
+        ]);
+
+        let matrixZ = Matrix.from(3, 3, [
+            [ cosG, -sinG, 0 ],
+            [ sinG,  cosG, 0 ],
+            [ 0,     0,    1 ]
+        ]);
+
+        let newMatrix = matrixX.multiply(matrixY).multiply(matrixZ);
+
+        return newMatrix;
+    }
+
+    static translation2D(tX, tY = tX) {
+        if (Array.isArray(tX)) {
+            tY = tX[1];
+            tX = tX[0];
+        }
+
+        let newMatrix = Matrix.identity(3);
+
+        newMatrix.setValue(0, 2, tX);
+        newMatrix.setValue(1, 2, tY);
 
         return newMatrix;
     }
     
-    static rot3DZ(gamma) {
-        let sg = Math.sin(gamma);
-        let cg = Math.cos(gamma);
+    static translation3D(tX, tY = tX, tZ = tY) {
+        if (Array.isArray(tX)) {
+            tZ = tX[2];
+            tY = tX[1];
+            tX = tX[0];
+        }
 
-        let arr = [
-            [cg, -sg, 0],
-            [sg, cg, 0],
-            [0, 0, 1],
-        ];
-
-        let newMatrix = Matrix.from(3, 3, arr);
-
-        return newMatrix;
-    }
-
-    static rot3D(alpha, beta, gamma) {
-        let matX = Matrix.rot3DX(alpha);
-        let matY = Matrix.rot3DY(beta);
-        let matZ = Matrix.rot3DZ(gamma);
-
-        let newMatrix = matX.multiply(matY).multiply(matZ)
-
-        return newMatrix;
-    }
-
-    static rot3DArray(rotations) {
-        return Matrix.rot3D(rotations[0], rotations[1], rotations[2]);
-    }
-
-    static rot3DMat4(alpha, beta, gamma) {
-        return Matrix.rot3D(alpha, beta, gamma).changeDimensions(4, 4);
-    }
-
-    static rot3DMat4Array(rotations) {
-        return Matrix.rot3DArray(rotations).changeDimensions(4, 4);
-    }
-
-    static translationMat4(tX, tY, tZ) {
-        let newMatrix = new Matrix(4, 4);
-
-        newMatrix.setValue(0, 3, tX);
-        newMatrix.setValue(1, 3, tY);
-        newMatrix.setValue(2, 3, tZ);
-
-        return newMatrix;
-    }
-
-    static translationMat4Array(translations) {
-        return Matrix.translationMat4(translations[0], translations[1], translations[2]);
-    }
-
-    static translationIdentityMat4(tX, tY, tZ) {
         let newMatrix = Matrix.identity(4);
 
         newMatrix.setValue(0, 3, tX);
@@ -585,39 +593,94 @@ class Matrix {
         return newMatrix;
     }
 
-    static translationIdentityMat4Array(translations) {
-        return Matrix.translationIdentityMat4(translations[0], translations[1], translations[2]);
-    }
+    static affineTransformation2D(rotations, translations) {
+        let rotationMatrix;
+        let translationMatrix;
 
-    static affineRotation4D(rotations, translations) {
-        let rotationMatrix = Matrix.rot3DMat4Array(rotations);
-        let translationMatrix = Matrix.translationMat4Array(translations);
+        if (Array.isArray(rotations)) {
+            rotationMatrix = Matrix.rotation2D(rotations);
+        } else {
+            rotationMatrix = rotations.clone();
+        }
+
+        if (Array.isArray(translations)) {
+            translationMatrix = Matrix.translation2D(translations);
+        } else {
+            translationMatrix = translations.clone();
+        }
+
+        translationMatrix.setValue(0, 0, 0);
+        translationMatrix.setValue(1, 1, 0);
+
+        rotationMatrix = rotationMatrix.changeDimensionsIdentity(3, 3);
+        translationMatrix = translationMatrix.changeDimensionsIdentity(3, 3);
 
         let newMatrix = rotationMatrix.sum(translationMatrix);
-        newMatrix.setValue(3, 3, 1);
 
         return newMatrix;
     }
 
-    static affine4D(transformationMatrix, translationMatrix) {
-        let transfMatrix = transformationMatrix.changeDimensions(4, 4);
-        let translMatrix = translationMatrix.changeDimensions(4, 4);
+    static affineTransformation3D(rotations, translations) {
+        let rotationMatrix;
+        let translationMatrix;
 
-        let newMatrix = transfMatrix.sum(translMatrix);
-        newMatrix.setValue(3, 3, 1);
+        if (Array.isArray(rotations)) {
+            rotationMatrix = Matrix.rotation3D(rotations);
+        } else {
+            rotationMatrix = rotations.clone();
+        }
+
+        if (Array.isArray(translations)) {
+            translationMatrix = Matrix.translation3D(translations);
+        } else {
+            translationMatrix = translations.clone();
+        }
+
+        rotationMatrix = rotationMatrix.changeDimensionsIdentity(4, 4);
+        translationMatrix = translationMatrix.changeDimensionsIdentity(4, 4);
+
+        let newMatrix = rotationMatrix.multiply(translationMatrix);
 
         return newMatrix;
     }
 
-    toString() {
-        return JSON.stringify(this.matrix);
+    static projection3D(fieldOfView, aspect, zNear, zFar) {
+        let _00 = 1 / (Math.tan(fieldOfView / 2) * aspect);
+        let _11 = 1 / (Math.tan(fieldOfView / 2));
+        let _22 = -(zNear + zFar) / (zFar - zNear);
+        let _23 = -2 * zFar * zNear / (zFar - zNear);
+
+        let newMatrix = Matrix.from(4, 4, [
+            [ _00,   0,   0,   0 ],
+            [   0, _11,   0,   0 ],
+            [   0,   0, _22, _23 ],
+            [   0,   0,  -1,   0 ],
+        ]);
+
+        return newMatrix;
     }
 
-    flat() {
-        return this.matrix.flat();
+    valueOf() {
+        return this.matrix;
     }
 
-    reshape(rows, columns) {
+    float32Array(axis) {
+        return new Float32Array(this.flat(axis));
+    }
+
+    toString(precision = 20) {
+        return this.matrix.map((row) => row.map((element) => parseFloat(element.toFixed(precision))).join(",")).join("\n");
+    }
+
+    clone() {
+        return Matrix.from(this.rows, this.columns, structuredClone(this.matrix))
+    }
+
+    flat(axis = 0) {
+        return axis == 0 ? this.matrix.flat() : this.transposed().matrix.flat();
+    }
+
+    reshape(rows, columns = rows) {
         let flattened = this.flat();
         let flattenedLength = flattened.length;
 
@@ -627,47 +690,42 @@ class Matrix {
         let arr = [];
 
         for (let i = 0; i < rows; i++) {
-            arr[i] = [];
+            let row = [];
 
             for (let j = 0; j < columns; j++) {
                 let index = i + j * rows;
 
-                arr[i][j] = flattened[index % flattenedLength];
+                row[j] = flattened[index % flattenedLength];
             }
+
+            arr[i] = row;
         }
 
         let newMatrix = Matrix.from(rows, columns, arr);
+
+        return newMatrix;
     }
 
     setZero() {
-        let rows = this.rows;
-        let columns = this.columns;
-
-        let arr = [];
-
-        for (let i = 0; i < rows; i++) {
-            arr[i] = [];
-
-            for (let j = 0; j < columns; j++) {
-                arr[i][j] = 0;
-            }
-        }
-
-        this.matrix = arr;
+        this.set([[0]]);
     }
 
-    set(source) {
-        let rows = this.rows;
-        let columns = this.columns;
+    set(src) {
+        let rows1 = this.rows;
+        let columns1 = this.columns;
+        let rows2 = src.length;
+        let columns2 = src[0].length; 
 
         let arr = [];
 
-        for (let i = 0; i < rows; i++) {
-            arr[i] = [];
+        for (let i = 0; i < rows1; i++) {
+            let row = [];
 
-            for (let j = 0; j < columns; j++) {
-                arr[i][j] = source[i][j];
+            for (let j = 0; j < columns1; j++) {
+                row[j] = src[i % rows2][j % columns2];
             }
+
+            arr[i] = row;
         }
 
         this.matrix = arr;
@@ -704,13 +762,13 @@ class Matrix {
 
         switch (columns) {
             case 2: 
-                return Vector2.from(target);
+                return Vector2.from(targetRow);
 
             case 3: 
-                return Vector3.from(target);
+                return Vector3.from(targetRow);
 
             case 4: 
-                return Vector4.from(target);
+                return Vector4.from(targetRow);
         }
 
         throw new Error("Haven't made that one yet!");
@@ -814,7 +872,7 @@ class Matrix {
         return newMatrix;
     }
 
-    product(matrix2) {
+    elementMultiply(matrix2) {
         let src1 = this.matrix;
         let src2 = matrix2.matrix;
         let arr = [];
@@ -842,7 +900,7 @@ class Matrix {
         return newMatrix;
     }
 
-    quotient(matrix2) {
+    elementDivide(matrix2) {
         let src1 = this.matrix;
         let src2 = matrix2.matrix;
         let arr = [];
@@ -866,6 +924,64 @@ class Matrix {
         }
 
         let newMatrix = Matrix.from(rows1, columns1, arr);
+
+        return newMatrix;
+    }
+
+    multiply(matrix2) {
+        let rows1 = this.rows;
+        let columns1 = this.columns;
+        let rows2 = matrix2.rows;
+        let columns2 = matrix2.columns;
+
+        if (columns1 != rows2) {
+            throw new Error('Inner dimensions not equivilent.');
+        }
+
+        let src1 = this.matrix;
+        let src2 = matrix2.matrix;
+        let newMatrix = new Matrix(rows1, columns2);
+
+        for (let r = 0; r < rows1; r++) {
+            for (let c = 0; c < columns2; c++) {
+                let sum = 0;
+
+                for (let n = 0; n < columns1; n++) {
+                    sum += src1[r][n] * src2[n][c];
+                }
+
+                newMatrix.setValue(r, c, sum);
+            }
+        }
+
+        return newMatrix;
+    }
+
+    divide(matrix2) {
+        let rows1 = this.rows;
+        let columns1 = this.columns;
+        let rows2 = matrix2.rows;
+        let columns2 = matrix2.columns;
+
+        if (columns1 != rows2) {
+            throw new Error('Inner dimensions not equivilent.');
+        }
+
+        let src1 = this.matrix;
+        let src2 = matrix2.inverse().matrix;
+        let newMatrix = new Matrix(rows1, columns2);
+
+        for (let r = 0; r < rows1; r++) {
+            for (let c = 0; c < columns2; c++) {
+                let sum = 0;
+
+                for (let n = 0; n < columns1; n++) {
+                    sum += src1[r][n] * src2[n][c];
+                }
+
+                newMatrix.setValue(r, c, sum);
+            }
+        }
 
         return newMatrix;
     }
@@ -967,8 +1083,6 @@ class Matrix {
     }
 
     invertSigns(start = 0) {
-        let counter = start;
-
         let src = this.matrix;
         let arr = [];
 
@@ -981,13 +1095,11 @@ class Matrix {
             for (let j = 0; j < columns; j++) {
                 let value = src[i][j];
 
-                if (counter % 2 != 0) {
+                if ((start + i + j) % 2 != 0) {
                     value *= -1;
                 }
 
                 row[j] = value;
-
-                counter++;
             }
 
             arr[i] = row;
@@ -1020,36 +1132,7 @@ class Matrix {
         return newMatrix;
     }
 
-    multiply(matrix2) {
-        let rows1 = this.rows;
-        let columns1 = this.columns;
-        let rows2 = matrix2.rows;
-        let columns2 = matrix2.columns;
-
-        if (rows1 != columns2) {
-            throw new Error('Inner dimensions not equivilent.');
-        }
-
-        let src1 = this.matrix;
-        let src2 = matrix2.matrix;
-        let newMatrix = new Matrix(rows1, columns2);
-
-        for (let k = 0; k < columns2; k++) {
-            for (let i = 0; i < rows1; i++) {
-                let val = 0;
-
-                for (let j = 0; j < columns1; j++) {
-                    val += src1[i][j] * src2[j][k];
-                }
-
-                newMatrix.setValue(i, k, val);
-            }
-        }
-
-        return newMatrix;
-    }
-
-    complementarySubmatrix(exI, exJ) {
+    complementarySubmatrix(exI, exJ = exI) {
         let arr = [];
 
         let src = this.matrix;
@@ -1120,7 +1203,6 @@ class Matrix {
 
     minors() {
         let arr = [];
-        let src = this.matrix;
 
         let rows = this.rows;
         let columns = this.columns;
@@ -1147,7 +1229,7 @@ class Matrix {
         let determinant = this.determinant();
         let minors = this.minors();
         let invertSigns = minors;
-        let transposed = invertSigns.transposed().invertSigns();
+        let transposed = invertSigns.transposed().invertSigns(0);
 
         let inverse = transposed.scaled(1 / determinant);
 
@@ -1179,40 +1261,7 @@ class Matrix {
         return newMatrix;
     }
 
-    rotateX(alpha) {
-        if (this.rows != 3 || this.columns != 3) {
-            throw new Error("Not a 3D matrix.");
-        }
-
-        let rotationMatrix = Matrix.rot3DX(alpha);
-        let newMatrix = this.multiply(rotationMatrix);
-
-        return newMatrix;
-    } 
-
-    rotateY(beta) {
-        if (this.rows != 3 || this.columns != 3) {
-            throw new Error("Not a 3D matrix.");
-        }
-
-        let rotationMatrix = Matrix.rot3DX(beta);
-        let newMatrix = this.multiply(rotationMatrix);
-
-        return newMatrix;
-    }
-
-    rotateZ(gamma) {
-        if (this.rows != 3 || this.columns != 3) {
-            throw new Error("Not a 3D matrix.");
-        }
-
-        let rotationMatrix = Matrix.rot3DX(gamma);
-        let newMatrix = this.multiply(rotationMatrix);
-
-        return newMatrix;
-    }
-
-    changeDimensions(targetRows, targetColumns, wrap = false) {
+    changeDimensions(targetRows, targetColumns = targetRows, wrap = false) {
         let arr = [];
         let src = this.matrix;
 
@@ -1254,6 +1303,80 @@ class Matrix {
         return newMatrix
     }
 
+    changeDimensionsIdentity(targetRows, targetColumns = targetRows, wrap = false) {
+        let arr = [];
+        let src = this.matrix;
+
+        let rows = this.rows;
+        let columns = this.columns;
+
+        if (wrap) {
+            for (let i = 0; i < targetRows; i++) {
+                let row = [];
+
+                for (let j = 0; j < targetColumns; j++) {
+                    row[j] = src[i % rows][j % columns];
+                }
+
+                arr[i] = row;
+            }
+        } else {
+            for (let i = 0; i < targetRows; i++) {
+                let row = [];
+
+                for (let j = 0; j < targetColumns; j++) {
+                    let el;
+
+                    if (i >= rows || j >= columns) {
+                        if (i == j) {
+                            el = 1;
+                        } else {
+                            el = 0;
+                        }
+                    } else {
+                        el = src[i][j];
+                    } 
+
+                    row[j] = el;
+                }
+
+                arr[i] = row;
+            }
+        }
+
+        let newMatrix = Matrix.from(targetRows, targetColumns, arr);
+
+        return newMatrix
+    }
+
+    power(power) {
+        power = ~~power;
+
+        if (this.rows != this.columns) {
+            throw new Error("Matrix is not square.");
+        }
+
+        let multiplier;
+
+        if (power > 0) {
+            multiplier = this.clone();
+        } else if (power < 0) {
+            multiplier = this.inverse();
+        } else if (power == 0) {
+            return Matrix.identity(this.rows);
+        }
+
+        let newMatrix = multiplier.clone();
+
+        power = Math.abs(power);
+
+        for (let i = 1; i < power; i++) {
+            newMatrix = newMatrix.multiply(multiplier);
+        }
+
+        return newMatrix;
+    }
+
     reciprocal() {
         let arr = [];
         let src = this.matrix;
@@ -1274,6 +1397,64 @@ class Matrix {
         }
 
         let newMatrix = Matrix.from(rows, columns, arr);
+
+        return newMatrix;
+    }
+
+    sumAxis(axis = -1, keepDims = false) {
+        let src = this.matrix;
+        let newArr = [];
+
+        let rows = this.rows;
+        let columns = this.columns;
+
+        if (axis == -1) {
+            let sum = 0;
+
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < columns; j++) {
+                    sum += src[i][j];
+                }
+            }
+
+            if (keepDims) {
+                return Matrix.from(rows, columns, [[sum]]);
+            } else {
+                return Matrix.from(1, 1, [[sum]]);
+            }
+        } else if (axis == 0) {
+            newArr[0] = [];
+
+            for (let j = 0; j < columns; j++) {
+                let sum = 0;
+                
+                for (let i = 0; i < rows; i++) {
+                    sum += src[i][j];
+                }
+
+                newArr[0][j] = sum;
+            }
+        } else if (axis == 1) {
+            for (let i = 0; i < rows; i++) {
+                let sum = 0;
+
+                for (let j = 0; j < columns; j++) {
+                    sum += src[i][j];
+                }
+
+                newArr[i] = [sum];
+            }
+        }
+
+        let newMatrix;
+
+        if (keepDims) {
+            newMatrix = Matrix.from(rows, columns, newArr);
+        } else if (axis == 0) {
+            newMatrix = Matrix.from(1, columns, newArr);
+        } else if (axis == 1) {
+            newMatrix = Matrix.from(rows, 1, newArr);
+        }
 
         return newMatrix;
     }
@@ -1337,7 +1518,7 @@ class RegressionCalculator {
         const r = numerator / rDenom;
 
         const fn = (x) => { return intercept + slope * x };
-        const stringFn = `f(x) = ${intercept.toFixed(this.precision)} + ${slope.toFixed(this.precision)}x`;
+        const stringFn = `f(x) = ${parseFloat(intercept.toFixed(this.precision))} + ${parseFloat(slope.toFixed(this.precision))}x`;
         const format = "f(x) = a + bx";
         const equation = { a: intercept, b: slope, r: r, fn: fn, stringFn: stringFn, format: format };
 
@@ -1358,7 +1539,7 @@ class RegressionCalculator {
         const linEquation = calculator.linearRegression();
 
         const fn = (x) => { return Math.pow(Math.E, linEquation.a) * Math.pow(Math.pow(Math.E, linEquation.b), x) };
-        const stringFn = `f(x) = ${Math.pow(Math.E, linEquation.a).toFixed(this.precision)} * ${Math.pow(Math.E, linEquation.b).toFixed(this.precision)} ^ x)`;
+        const stringFn = `f(x) = ${parseFloat(Math.pow(Math.E, linEquation.a).toFixed(this.precision))} * ${Math.pow(Math.E, linEquation.b).toFixed(this.precision)} ^ x)`;
         const format = "f(x) = ab ^ x";
         const equation = { a: Math.pow(Math.E, linEquation.a), b: Math.pow(Math.E, linEquation.b), r: linEquation.r, fn: fn, stringFn: stringFn, format: format };
 
@@ -1390,7 +1571,7 @@ class RegressionCalculator {
             sX2Y += x * x * y;
         };
 
-        const intermediate = new Matrix(3, 3, [
+        const intermediate = Matrix.from(3, 3, [
             [sX4, sX3, sX2],
             [sX3, sX2, sX],
             [sX2, sX, n],
@@ -1400,8 +1581,11 @@ class RegressionCalculator {
             [sX2Y],
             [sXY],
             [sY],
-        ])
-        const result = intermediate.inverse().multiply(output);
+        ]);
+
+        const inverted = intermediate.inverse();
+        Terminal.print(inverted);
+        const result = inverted.multiply(output);
 
         const a = result.getValue(0, 0);
         const b = result.getValue(1, 0);
@@ -1445,7 +1629,7 @@ class RegressionCalculator {
 }
 
 class Vector2 {
-    constructor(x, y) {
+    constructor(x = 0, y = x) {
         this.x = x;
         this.y = y;
     }
@@ -1691,7 +1875,7 @@ class Vector2 {
         }
     }
 
-    isEqual(v2, tolerance) {
+    equals(v2, tolerance) {
         if (tolerance) {
             if (Math.abs(this.x - v2.x) < tolerance && Math.abs(this.y - v2.y) < tolerance) {
                 return true;
@@ -1713,7 +1897,7 @@ class Vector2 {
         return this.difference(v2).magnitude();
     }
 
-    rotateRad(theta, origin) {
+    rotateRad(theta, origin = Vector2.neutral()) {
         let v1 = this.difference(origin)
 
         let ct = Math.cos(theta);
@@ -1745,6 +1929,10 @@ class Vector2 {
 
     mod(num) {
         return new Vector2(this.x % num, this.y % num);
+    }
+
+    abs() {
+        return new Vector2(Math.abs(this.x), Math.abs(this.y));
     }
 
     greaterThan(v2) {
@@ -1797,7 +1985,7 @@ class Vector2 {
 }
 
 class Vector3 {
-    constructor(x, y, z) {
+    constructor(x = 0, y = x, z = y) {
         this.x = x;
         this.y = y;
         this.z = z;
@@ -2056,7 +2244,7 @@ class Vector3 {
         }
     }
 
-    isEqual(v2, tolerance) {
+    equals(v2, tolerance) {
         if (tolerance) {
             if (Math.abs(this.x - v2.x) < tolerance && Math.abs(this.y - v2.y) < tolerance && Math.abs(this.z - v2.z) < tolerance) {
                 return true;
@@ -2074,27 +2262,34 @@ class Vector3 {
         return this.sum(new Vector3(v2.x - this.x, v2.y - this.y, v2.z - this.z).scaled(weight));
     }
 
-    scaleZ(near) {
-        let z = this.z;
+    scaleZ(near, origin = Vector3.neutral()) {
+        let toOrigin = origin.difference(this);
 
-        let x = (near * this.x) / -z;
-        let y = (near * this.y) / -z;
+        let z = -toOrigin.z;
+
+        let x = (near * toOrigin.x) / z;
+        let y = (near * toOrigin.y) / z;
         
         return new Vector3(x, y, z);
     }
 
-    rotateDeg(degs, origin) {
+    unscaleZ(near, origin = Vector3.neutral()) {
+        let z = this.z;
+
+        let x = (this.x * z) / near;
+        let y = (this.y * z) / near;
+        
+        return origin.difference(new Vector3(x, y, -z));
+    }
+
+    rotateDeg(degs, origin = Vector3.neutral()) {
         let rads = degs.scaled(Math.PI / 180);
 
         return this.rotateRad(rads, origin);
     }
 
-    rotateRad(rads, origin) {
+    rotateRad(rads, origin = Vector3.neutral()) {
         let v1 = this.difference(origin)
-
-        rads.x = rads.x;
-        rads.y = rads.y;
-        rads.z = rads.z;
 
         let cx = Math.cos(rads.x);
         let sx = Math.sin(rads.x);
@@ -2115,6 +2310,32 @@ class Vector3 {
         v1.x = yx;
         v1.y = xy;
         v1.z = xz;
+
+        return v1.sum(origin);
+    }
+
+    unrotateRad(rads, origin = Vector3.neutral()) {
+        let v1 = this.difference(origin)
+
+        let cx = Math.cos(-rads.x);
+        let sx = Math.sin(-rads.x);
+        let cy = Math.cos(-rads.y);
+        let sy = Math.sin(-rads.y);
+        let cz = Math.cos(-rads.z);
+        let sz = Math.sin(-rads.z);
+
+        let xy = v1.y * cx - v1.z * sx;
+        let xz = v1.z * cx + v1.y * sx;
+
+        let yx = v1.x * cy - xz * sy;
+        let yz = xz * cy + v1.x * sy;
+
+        let zx = yx * cz - xy * sz;
+        let zy = xy * cz + yx * sz;
+
+        v1.x = zx;
+        v1.y = zy;
+        v1.z = yz;
 
         return v1.sum(origin);
     }
@@ -2141,6 +2362,10 @@ class Vector3 {
 
     mod(num) {
         return new Vector3(this.x % num, this.y % num, this.z % num);
+    }
+
+    abs() {
+        return new Vector3(Math.abs(this.x), Math.abs(this.y), Math.abs(this.z));
     }
 
     greaterThan(v2) {
@@ -2197,7 +2422,7 @@ class Vector3 {
 }
 
 class Vector4 {
-    constructor(x, y, z, w) {
+    constructor(x = 0, y = x, z = y, w = z) {
         this.x = x;
         this.y = y;
         this.z = z;
@@ -2490,6 +2715,10 @@ class Vector4 {
         return new Vector4(this.x % num, this.y % num, this.z % num, this.w % num);
     }
 
+    abs() {
+        return new Vector4(Math.abs(this.x), Math.abs(this.y), Math.abs(this.z), Math.abs(this.w));
+    }
+
     toRowMatrix() {
         let newMatrix = Matrix.from(1, 4, [[this.x, this.y, this.z, this.w]]);
         
@@ -2549,7 +2778,7 @@ class Noise {
 
         let permTableSize = 1024;
         
-        let grad = [[1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],[1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],[0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]];
+        let grad = [[1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],[1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],[0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]].map((a) => Vector3.unitRand().array());
         let p = [207, 938, 803, 318, 19, 860, 572, 788, 221, 140, 219, 1011, 893, 76, 326, 823, 118, 441, 455, 523, 284, 29, 218, 717, 290, 599, 241, 968, 520, 364, 676, 546, 350, 460, 335, 583, 197, 785, 173, 478, 778, 362, 477, 855, 565, 67, 593, 456, 195, 816, 745, 534, 47, 69, 451, 10, 783, 995, 807, 874, 827, 576, 54, 271, 296, 633, 687, 85, 1005, 60, 772, 225, 881, 492, 249, 11, 824, 756, 975, 204, 792, 904, 172, 238, 235, 883, 163, 120, 820, 562, 188, 202, 276, 119, 84, 57, 277, 43, 866, 418, 356, 174, 321, 898, 697, 337, 766, 393, 349, 315, 943, 996, 793, 514, 751, 636, 956, 1019, 992, 420, 510, 611, 953, 566, 260, 835, 838, 568, 436, 729, 35, 51, 659, 890, 651, 849, 376, 338, 105, 691, 942, 110, 936, 283, 919, 515, 444, 804, 532, 99, 799, 267, 596, 181, 630, 822, 136, 483, 231, 344, 760, 1001, 535, 125, 299, 182, 66, 143, 198, 214, 900, 921, 701, 100, 484, 579, 266, 48, 524, 930, 674, 454, 495, 845, 791, 216, 863, 563, 649, 536, 466, 619, 23, 1002, 130, 809, 519, 764, 439, 223, 922, 1012, 522, 1015, 814, 408, 787, 733, 461, 607, 511, 564, 300, 360, 923, 935, 817, 365, 36, 73, 552, 854, 983, 485, 90, 322, 193, 343, 907, 789, 689, 929, 531, 1003, 932, 403, 658, 648, 709, 206, 359, 645, 469, 352, 802, 413, 644, 228, 740, 390, 775, 210, 158, 727, 92, 106, 829, 547, 83, 828, 127, 848, 627, 948, 719, 398, 38, 482, 257, 432, 587, 324, 168, 298, 657, 967, 896, 329, 270, 856, 677, 150, 423, 117, 250, 471, 13, 336, 978, 749, 600, 683, 693, 553, 440, 108, 990, 870, 272, 357, 199, 582, 366, 797, 287, 716, 892, 586, 406, 819, 833, 590, 372, 18, 75, 1017, 1018, 385, 91, 5, 310, 631, 516, 374, 212, 504, 229, 682, 463, 965, 102, 741, 407, 984, 584, 388, 518, 813, 142, 104, 612, 949, 320, 263, 867, 52, 639, 871, 265, 89, 341, 203, 726, 26, 264, 0, 805, 45, 662, 557, 696, 746, 309, 832, 186, 171, 795, 128, 912, 985, 139, 465, 494, 872, 405, 430, 962, 378, 681, 409, 330, 950, 227, 928, 843, 383, 969, 637, 581, 254, 480, 847, 428, 146, 39, 1022, 462, 945, 319, 895, 873, 384, 415, 706, 97, 49, 542, 537, 643, 986, 44, 902, 40, 411, 781, 62, 129, 530, 58, 868, 1021, 508, 993, 71, 678, 46, 196, 400, 698, 56, 540, 917, 551, 239, 96, 194, 526, 635, 774, 897, 467, 1009, 937, 971, 304, 624, 126, 684, 387, 380, 569, 137, 391, 887, 151, 226, 15, 550, 705, 641, 735, 667, 622, 213, 629, 875, 316, 580, 220, 952, 156, 699, 961, 30, 50, 165, 541, 798, 1020, 734, 567, 443, 240, 41, 742, 603, 621, 660, 446, 933, 732, 275, 771, 497, 42, 889, 155, 715, 588, 642, 258, 529, 395, 533, 414, 255, 114, 268, 597, 1007, 179, 32, 16, 613, 837, 386, 543, 982, 124, 591, 476, 317, 779, 346, 176, 976, 725, 489, 205, 616, 184, 162, 169, 589, 331, 944, 970, 294, 575, 509, 507, 501, 947, 831, 617, 243, 503, 905, 888, 491, 170, 675, 410, 224, 647, 358, 714, 379, 232, 538, 20, 692, 609, 65, 17, 292, 762, 286, 744, 157, 502, 918, 869, 512, 493, 963, 288, 578, 340, 672, 748, 178, 668, 1023, 242, 570, 506, 37, 311, 323, 796, 328, 200, 913, 442, 251, 166, 282, 654, 187, 412, 614, 712, 763, 144, 132, 966, 177, 369, 422, 93, 208, 111, 750, 850, 628, 830, 973, 280, 458, 4, 625, 498, 28, 940, 555, 70, 61, 68, 548, 452, 88, 839, 879, 730, 544, 334, 686, 661, 306, 753, 475, 279, 777, 27, 486, 704, 1008, 695, 758, 8, 191, 401, 342, 121, 481, 500, 397, 592, 800, 453, 556, 160, 59, 979, 152, 901, 840, 601, 392, 634, 281, 851, 939, 794, 417, 164, 363, 549, 488, 6, 431, 738, 3, 107, 977, 135, 399, 499, 558, 769, 302, 877, 853, 559, 9, 812, 307, 655, 312, 931, 561, 852, 308, 348, 713, 790, 571, 473, 806, 237, 1006, 585, 927, 747, 720, 345, 885, 859, 914, 236, 999, 899, 22, 673, 14, 269, 449, 81, 447, 404, 256, 347, 882, 954, 246, 377, 95, 368, 185, 274, 577, 189, 759, 201, 248, 638, 78, 707, 757, 63, 123, 815, 666, 924, 389, 618, 247, 234, 80, 915, 836, 527, 605, 427, 721, 903, 664, 112, 33, 285, 925, 72, 857, 435, 955, 620, 834, 964, 876, 450, 736, 615, 690, 159, 594, 780, 470, 606, 445, 244, 573, 154, 825, 333, 891, 960, 623, 994, 958, 632, 314, 842, 86, 878, 910, 468, 554, 669, 355, 671, 685, 464, 278, 864, 305, 610, 708, 416, 479, 373, 183, 301, 1000, 598, 94, 64, 222, 858, 325, 731, 754, 980, 786, 74, 602, 131, 87, 1016, 153, 167, 773, 433, 528, 934, 539, 703, 521, 295, 626, 457, 595, 293, 303, 981, 525, 339, 909, 1004, 767, 180, 367, 429, 865, 718, 190, 710, 12, 861, 737, 273, 381, 768, 109, 34, 116, 724, 353, 394, 496, 253, 906, 846, 382, 291, 991, 327, 862, 723, 711, 665, 608, 743, 653, 354, 656, 987, 419, 149, 989, 670, 818, 134, 371, 988, 810, 811, 425, 98, 801, 761, 808, 700, 694, 920, 375, 472, 351, 880, 424, 517, 770, 148, 957, 490, 53, 487, 426, 361, 297, 728, 886, 147, 663, 459, 133, 141, 916, 332, 7, 215, 402, 145, 31, 560, 688, 211, 55, 640, 782, 289, 784, 679, 161, 776, 702, 545, 233, 230, 122, 680, 25, 24, 434, 262, 908, 844, 437, 209, 1, 911, 604, 997, 826, 765, 652, 370, 438, 1013, 752, 722, 974, 261, 77, 421, 21, 396, 313, 474, 998, 739, 245, 884, 959, 951, 252, 926, 513, 972, 113, 574, 138, 841, 505, 101, 646, 755, 1010, 82, 946, 103, 217, 941, 115, 821, 1014, 894, 650, 259, 448, 2, 79, 192, 175];
 
         let perm = new Array(permTableSize * 2);
@@ -2640,10 +2869,6 @@ class Noise {
     }
 
     perlin(x0, y0) {
-        let frequency = this.frequency;
-        let roughness = this.roughness;
-        let amplitude = this.amplitude;
-        let persistence = this.persistence;
         let octaves = this.octaves;
         let cellSize = this.cellSize;
         let contrast = this.contrast;
@@ -2664,11 +2889,11 @@ class Noise {
         for (let i = 0; i < octaves; i++) {
             let frequency1 = frequencies[i];
 
-            let x = Math.abs(x0 * frequency1 + offsetSum);
-            let y = Math.abs(y0 * frequency1 + offsetSum);
+            let x = x0 * frequency1 + offsetSum;
+            let y = y0 * frequency1 + offsetSum;
 
-            x = x < permTableSize ? x : x % permTableSize;
-            y = y < permTableSize ? y : y % permTableSize;
+            x = permTableSize - (Math.abs(x) < permTableSize ? x : x % permTableSize);
+            y = permTableSize - (Math.abs(y) < permTableSize ? y : y % permTableSize);
     
             let x1 = ~~x;
             let y1 = ~~y;
@@ -2706,10 +2931,6 @@ class Noise {
     }
 
     perlin3(x0, y0, z0) {
-        let frequency = this.frequency;
-        let roughness = this.roughness;
-        let amplitude = this.amplitude;
-        let persistence = this.persistence;
         let octaves = this.octaves;
         let cellSize = this.cellSize;
         let contrast = this.contrast;
@@ -2731,13 +2952,13 @@ class Noise {
         for (let i = 0; i < octaves; i++) {
             let frequency1 = frequencies[i];
 
-            let x = Math.abs(x0 * frequency1 + offsetSum);
-            let y = Math.abs(y0 * frequency1 + offsetSum);
-            let z = Math.abs(z0 * frequency1 + offsetSum);
+            let x = x0 * frequency1 + offsetSum;
+            let y = y0 * frequency1 + offsetSum;
+            let z = z0 * frequency1 + offsetSum;
 
-            x = x < permTableSize ? x : x % permTableSize;
-            y = y < permTableSize ? y : y % permTableSize;
-            z = z < permTableSize ? z : z % permTableSize;
+            x = permTableSize - (Math.abs(x) < permTableSize ? x : x % permTableSize);
+            y = permTableSize - (Math.abs(y) < permTableSize ? y : y % permTableSize);
+            z = permTableSize - (Math.abs(z) < permTableSize ? z : z % permTableSize);
     
             let x1 = ~~x;
             let y1 = ~~y;
@@ -2783,10 +3004,6 @@ class Noise {
     perlinBuffer(width, height, offsetX = 0, offsetY = 0) {
         let buffer = new Float32Array(width * height);
 
-        let frequency = this.frequency;
-        let roughness = this.roughness;
-        let amplitude = this.amplitude;
-        let persistence = this.persistence;
         let octaves = this.octaves;
         let cellSize = this.cellSize;
         let contrast = this.contrast;
@@ -2795,7 +3012,6 @@ class Noise {
         let perm = this.perm;
         let permTableSize = this.permTableSize;
 
-        let dot2 = this.dot2;
         let ease = this.ease;
 
         let frequencies = this.frequencies;
@@ -2814,11 +3030,11 @@ class Noise {
                 for (let k = 0; k < octaves; k++) {
                     let frequency1 = frequencies[k];
 
-                    let x = Math.abs(x0 * frequency1 + offsetSum);
-                    let y = Math.abs(y0 * frequency1 + offsetSum);
+                    let x = x0 * frequency1 + offsetSum;
+                    let y = y0 * frequency1 + offsetSum;
 
-                    x = x < permTableSize ? x : x % permTableSize;
-                    y = y < permTableSize ? y : y % permTableSize;
+                    x = permTableSize - (Math.abs(x) < permTableSize ? x : x % permTableSize);
+                    y = permTableSize - (Math.abs(y) < permTableSize ? y : y % permTableSize);
             
                     let x1 = ~~x;
                     let y1 = ~~y;
@@ -2862,10 +3078,6 @@ class Noise {
     perlinBuffer3(width, height, z0, offsetX = 0, offsetY = 0) {
         let buffer = new Float32Array(width * height);
 
-        let frequency = this.frequency;
-        let roughness = this.roughness;
-        let amplitude = this.amplitude;
-        let persistence = this.persistence;
         let octaves = this.octaves;
         let cellSize = this.cellSize;
         let contrast = this.contrast;
@@ -2895,13 +3107,13 @@ class Noise {
                 for (let k = 0; k < octaves; k++) {
                     let frequency1 = frequencies[k];
 
-                    let x = Math.abs(x0 * frequency1 + offsetSum);
-                    let y = Math.abs(y0 * frequency1 + offsetSum);
-                    let z = Math.abs(z0 * frequency1 + offsetSum);
+                    let x = x0 * frequency1 + offsetSum;
+                    let y = y0 * frequency1 + offsetSum;
+                    let z = z0 * frequency1 + offsetSum;
 
-                    x = x < permTableSize ? x : x % permTableSize;
-                    y = y < permTableSize ? y : y % permTableSize;
-                    z = z < permTableSize ? z : z % permTableSize;
+                    x = permTableSize - (Math.abs(x) < permTableSize ? x : x % permTableSize);
+                    y = permTableSize - (Math.abs(y) < permTableSize ? y : y % permTableSize);
+                    z = permTableSize - (Math.abs(z) < permTableSize ? z : z % permTableSize);
             
                     let x1 = ~~x;
                     let y1 = ~~y;
@@ -2949,10 +3161,6 @@ class Noise {
     }
 
     simplex(x, y) {
-        let frequency = this.frequency;
-        let roughness = this.roughness;
-        let amplitude = this.amplitude;
-        let persistence = this.persistence;
         let octaves = this.octaves;
         let cellSize = this.cellSize;
         let contrast = this.contrast;
@@ -3045,10 +3253,6 @@ class Noise {
     }
 
     simplex3(x, y, z) {
-        let frequency = this.frequency;
-        let roughness = this.roughness;
-        let amplitude = this.amplitude;
-        let persistence = this.persistence;
         let octaves = this.octaves;
         let cellSize = this.cellSize;
         let contrast = this.contrast;
@@ -3191,10 +3395,6 @@ class Noise {
     simplexBuffer(width, height, offsetX = 0, offsetY = 0) {
         let buffer = new Float32Array(width * height);
 
-        let frequency = this.frequency;
-        let roughness = this.roughness;
-        let amplitude = this.amplitude;
-        let persistence = this.persistence;
         let octaves = this.octaves;
         let cellSize = this.cellSize;
         let contrast = this.contrast;
@@ -3302,10 +3502,6 @@ class Noise {
     simplexBuffer3(width, height, z, offsetX = 0, offsetY = 0) {
         let buffer = new Float32Array(width * height);
 
-        let frequency = this.frequency;
-        let roughness = this.roughness;
-        let amplitude = this.amplitude;
-        let persistence = this.persistence;
         let octaves = this.octaves;
         let cellSize = this.cellSize;
         let contrast = this.contrast;
@@ -3461,7 +3657,7 @@ class Noise {
 }
 
 class RGBA {
-    constructor(r, g, b, a) {
+    constructor(r = 0, g = r, b = g, a = g) {
         this.r = ~~r;
         this.g = ~~g;
         this.b = ~~b;
@@ -3492,7 +3688,7 @@ class RGBA {
         return `rgba(${this.r}, ${this.g}, ${this.b}, ${this.a / 255})`;
     }
     
-    arr() {
+    array() {
         return [this.r, this.g, this.b, this.a];
     }
 
@@ -3678,6 +3874,50 @@ class Math2 {
 
     static map(value, iMin, iMax, eMin, eMax) {
           return ((value - iMin) / (iMax - iMin)) * (eMax - eMin) + eMin;
+    }
+
+    static smoothstep(t) {
+        return t * t * (3.0 - 2.0 * t);
+    }
+
+    static smootherstep(t) {
+        let t3 = 10 * t * t * t;
+        let t4 = 1.5 * t3 * t;
+        let t5 = 0.4 * t4 * t;
+
+        return t5 - t4 + t3;
+    }
+
+    static easeinsine(x) {
+        return 1 - Math.cos((x * Math.PI) / 2);
+    }
+
+    static easeoutsine(x) {
+        return Math.sin((x * Math.PI) / 2);
+    }
+
+    static easeinoutsine(x) {
+        return -(Math.cos(Math.PI * x) - 1) / 2;
+    }
+
+    static easeinquad(x) {
+        return x * x;
+    }
+
+    static easeoutquad(x) {
+        return 1 - (1 - x) * (1 - x);
+    }
+
+    static easeinoutquad(x) {
+        return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+    }
+
+    static sigmoid(x) {
+        return 1 / (1 + Math.exp(-x));
+    }
+
+    static sigmoidNormalised(x) {
+        return 1 / (1 + Math.exp(-(x * 10 - 0.5)));
     }
 }
 
